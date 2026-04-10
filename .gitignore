@@ -1,0 +1,44 @@
+﻿# C# / .NET
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.suo
+*.user
+*.sln.docstates
+.vs/
+.vscode/
+.idea/
+
+# NuGet
+*.nupkg
+*.nuget.props
+*.nuget.targets
+
+# Node.js / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+
+# Vite
+frontend/.vite/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
