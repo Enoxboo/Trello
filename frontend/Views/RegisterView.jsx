@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import LoginForm from "../components/LoginForm";
-import { LoginModel } from "../models/AuthModel";
-import { loginService } from "../services/authService";
+import RegisterForm from "../Components/RegisterForm";
+import { RegisterModel } from "../Models/AuthModel";
 import "../style/login.css";
 import yomoLogo from "../src/assets/yomologo.png";
 
-// Composant principal de la page de connexion
-// Il gère l'état du formulaire, les erreurs, le message de succès
-// et appelle le service de connexion lors de la soumission.
-export default function LoginView() {
-    const [form, setForm] = useState(new LoginModel());
+
+// Composant de formulaire d'inscription
+// Il affiche le formulaire,
+export default function RegisterView() {
+    const [form, setForm] = useState(new RegisterModel());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
@@ -29,18 +27,17 @@ export default function LoginView() {
         setLoading(true);
 
         try {
-            const result = await loginService(form);
-            setMessage(result.message || "Connexion réussie");
-            console.log("Token reçu :", result.token);
+            console.log("Données envoyées :", form);
+            setMessage("Inscription réussie");
         } catch (err) {
-            setError(err.message);
+            setError("Erreur lors de l'inscription");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <main className="login-page" aria-label="Page de connexion">
+        <main className="login-page" aria-label="Page d'inscription">
         <div className="login-page">
             <div className="login-wrapper">
                 <div className="login-left">
@@ -49,13 +46,12 @@ export default function LoginView() {
 
                 <div className="login-right">
                     <div className="login-card">
-                        <h1 className="login-title">Connexion</h1>
-
+                        <h1 className="login-title">Inscription</h1>
                         <p className="login-subtitle">
-                            Bienvenue sur <span className="spanYello">Yello</span>
+                            Créez votre compte sur <span className="spanYello">Yello</span>
                         </p>
 
-                        <LoginForm
+                        <RegisterForm
                             form={form}
                             onChange={handleChange}
                             onSubmit={handleSubmit}
@@ -64,13 +60,6 @@ export default function LoginView() {
                         />
 
                         {message && <p className="success-message">{message}</p>}
-
-                        <p className="switch-text">
-                            Pas encore de compte ?{" "}
-                            <Link to="/register" className="switch-link">
-                                S'inscrire
-                            </Link>
-                        </p>
                     </div>
                 </div>
             </div>
