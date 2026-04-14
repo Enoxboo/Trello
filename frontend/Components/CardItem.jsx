@@ -1,35 +1,47 @@
-function getDueDateStatus(dueDate) {
-    if (!dueDate) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(dueDate);
-    const diff = (due - today) / (1000 * 60 * 60 * 24);
-    if (diff < 0) return "overdue";
-    if (diff <= 2) return "soon";
-    return "ok";
-}
+import { getDueDateStatus, formatDate } from "../src/utils/dateUtils";
+import { Trash2 } from "lucide-react";
 
-function formatDate(dueDate) {
-    const d = new Date(dueDate);
-    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
-}
 
-export default function CardItem({ card }) {
+// Composant pour afficher une carte dans la liste
+// Il affiche le titre, les labels, la date d'échéance, les commentaires et les membres
+// Il applique des styles différents selon la proximité de la date d'échéance
+// et appelle onClick pour ouvrir le modal de détails
+
+export default function CardItem({ card, onClick, onDelete }) {
     const dueDateStatus = getDueDateStatus(card.dueDate);
 
+    const handleDelete = (e) => {
+        e.stopPropagation();
+        onDelete(card.id);
+    };
+
     return (
-        <article className="card">
+        <article className="card" onClick={() => onClick(card)}>
             {card.labels.length > 0 && (
                 <div className="card-labels">
                     {card.labels.map((label) => (
-                        <span key={label} className={`card-label card-label--${label}`}>
-              {label}
-            </span>
+                        <span
+                            key={label.name}
+                            className="card-label"
+                            style={{ backgroundColor: label.color }}
+                        >
+        {label.name}
+    </span>
                     ))}
                 </div>
             )}
 
-            <p className="card-title">{card.title}</p>
+            <div className="card-title-row">
+                <p className="card-title">{card.title}</p>
+                <button
+                    className="card-delete-btn"
+                    onClick={handleDelete}
+                    title="Supprimer la carte"
+                    aria-label="Supprimer la carte"
+                >
+                    <Trash2 size={13} />
+                </button>
+            </div>
 
             <div className="card-footer">
                 {card.dueDate && (
@@ -37,17 +49,13 @@ export default function CardItem({ card }) {
             {formatDate(card.dueDate)}
           </span>
                 )}
-
-                {card.comments > 0 && (
-                    <span className="card-comments">{card.comments}</span>
+                {card.comments.length > 0 && (
+                    <span className="card-comments">{card.comments.length}</span>
                 )}
-
                 {card.members.length > 0 && (
                     <div className="card-members">
                         {card.members.map((m) => (
-                            <span key={m} className="card-avatar" title={m}>
-                {m}
-              </span>
+                            <span key={m} className="card-avatar" title={m}>{m}</span>
                         ))}
                     </div>
                 )}

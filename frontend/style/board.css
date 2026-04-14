@@ -4,6 +4,18 @@
     flex-direction: column;
     background: #f3eff1;
 }
+
+.board-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: #805e73;
+    color: #ffffff;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
 .board-header-left {
     display: flex;
     align-items: center;
@@ -15,17 +27,6 @@
     width: auto;
     object-fit: contain;
     filter: brightness(0) invert(1);
-}
-
-.board-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 24px;
-    background: #805e73;
-    color: #ffffff;
-    gap: 16px;
-    flex-wrap: wrap;
 }
 
 .board-title {
@@ -115,9 +116,7 @@
     flex: 1;
 }
 
-.list-title:hover {
-    color: #805e73;
-}
+.list-title:hover { color: #805e73; }
 
 .list-title-input {
     font-size: 15px;
@@ -307,6 +306,109 @@
 
 .add-card-cancel:hover { color: #c0392b; }
 
+.add-list-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 240px;
+    height: fit-content;
+    padding: 12px 16px;
+    background: rgba(61, 32, 53, 0.15);
+    border: 2px dashed rgba(243, 239, 241, 0.35);
+    border-radius: 12px;
+    color: #f3eff1;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.add-list-btn:hover {
+    background: rgba(61, 32, 53, 0.28);
+    border-color: rgba(243, 239, 241, 0.5);
+}
+
+.add-list-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.add-list-form {
+    min-width: 240px;
+    flex-shrink: 0;
+    background: rgba(61, 32, 53, 0.25);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: fit-content;
+}
+
+.add-list-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid rgba(243, 239, 241, 0.6);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #f3eff1;
+    font-family: inherit;
+}
+
+.add-list-input::placeholder {
+    color: rgba(243, 239, 241, 0.5);
+}
+
+.add-list-input:focus {
+    border-color: #f3eff1;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.add-list-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.add-list-confirm-btn {
+    padding: 6px 14px;
+    background: #f3eff1;
+    color: #3d2035;
+    border: none;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.add-list-confirm-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.add-list-confirm-btn:hover:not(:disabled) { opacity: 0.85; }
+
+.add-list-cancel-btn {
+    padding: 6px 10px;
+    background: transparent;
+    border: none;
+    color: #f3eff1;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: background 0.2s;
+}
+
+.add-list-cancel-btn:hover {
+    background: rgba(243, 239, 241, 0.15);
+}
+
 @media (max-width: 600px) {
     .board-lists {
         padding: 12px;
@@ -319,5 +421,160 @@
 
     .board-header {
         padding: 12px 16px;
+    }
+
+    .list-delete-btn {
+        background: transparent;
+        border: none;
+        color: rgba(128, 94, 115, 0.4);
+        font-size: 14px;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 6px;
+        transition: color 0.2s, background 0.2s;
+        line-height: 1;
+    }
+
+    .list-delete-btn:hover {
+        color: #c0392b;
+        background: rgba(192, 57, 43, 0.08);
+    }
+
+    .list-delete-confirm {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: #3d2035;
+    }
+
+    .list-delete-yes {
+        padding: 2px 8px;
+        background: #c0392b;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .list-delete-no {
+        padding: 2px 8px;
+        background: #eee;
+        color: #555;
+        border: none;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    /* ─── Supprimer carte ────────────────────────────── */
+    .card-title-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 6px;
+    }
+
+    .card-delete-btn {
+        background: transparent;
+        border: none;
+        color: rgba(128, 94, 115, 0.3);
+        font-size: 12px;
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 4px;
+        flex-shrink: 0;
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s;
+        line-height: 1;
+    }
+
+    .card:hover .card-delete-btn {
+        opacity: 1;
+    }
+
+    .card-delete-btn:hover {
+        color: #c0392b;
+        background: rgba(192, 57, 43, 0.08);
+    }
+
+
+    @media (max-width: 768px) {
+
+        .board-lists {
+            flex-direction: row;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 12px;
+            gap: 10px;
+            padding-inline: 10px;
+        }
+
+        .list-column {
+            min-width: 85vw;
+            max-width: 85vw;
+            flex-shrink: 0;
+            scroll-snap-align: start;
+        }
+
+        .board-page {
+            overflow: hidden;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 480px) {
+
+        .list-column {
+            min-width: 90vw;
+            max-width: 90vw;
+        }
+
+        .board-header {
+            padding: 10px 12px;
+        }
+
+        .list-title {
+            font-size: 14px;
+        }
+
+        /* Carte plus compacte */
+        .card {
+            padding: 10px 12px;
+        }
+
+        .card-delete-btn {
+            opacity: 1 !important;
+        }
+
+        .list-delete-confirm {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .list-delete-confirm span {
+            font-size: 11px;
+        }
+    }
+
+    .board-lists::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .board-lists::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .board-lists::-webkit-scrollbar-thumb {
+        background: rgba(128, 94, 115, 0.25);
+        border-radius: 4px;
     }
 }
