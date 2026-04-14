@@ -1,11 +1,14 @@
 import { useState } from "react";
 import CardItem from "./CardItem";
 import AddCardButton from "./AddCardButton";
-import { CardModel } from "../models/BoardModel";
+import { CardModel } from "../Models/BoardModel";
+import { Trash2 } from "lucide-react";
 
-export default function ListColumn({ list, onAddCard, onRenameList }) {
+
+export default function ListColumn({ list, onAddCard, onRenameList, onCardClick, onDeleteList, onDeleteCard }) {
     const [editing, setEditing] = useState(false);
     const [title, setTitle] = useState(list.title);
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const handleBlur = () => {
         setEditing(false);
@@ -39,12 +42,35 @@ export default function ListColumn({ list, onAddCard, onRenameList }) {
                         {title}
                     </h2>
                 )}
+
                 <span className="list-count">{list.cards.length}</span>
+
+                {!confirmDelete ? (
+                    <button
+                        className="list-delete-btn"
+                        onClick={() => setConfirmDelete(true)}
+                        title="Supprimer la liste"
+                        aria-label="Supprimer la liste"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                ) : (
+                    <div className="list-delete-confirm">
+                        <span>Supprimer ?</span>
+                        <button className="list-delete-yes" onClick={() => onDeleteList(list.id)}>Oui</button>
+                        <button className="list-delete-no" onClick={() => setConfirmDelete(false)}>Non</button>
+                    </div>
+                )}
             </div>
 
             <div className="list-cards">
                 {list.cards.map((card) => (
-                    <CardItem key={card.id} card={card} />
+                    <CardItem
+                        key={card.id}
+                        card={card}
+                        onClick={onCardClick}
+                        onDelete={(cardId) => onDeleteCard(list.id, cardId)}
+                    />
                 ))}
             </div>
 
