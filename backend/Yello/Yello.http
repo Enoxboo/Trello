@@ -1,0 +1,6 @@
+@Yello_HostAddress = http://localhost:5245
+
+GET {{Yello_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
