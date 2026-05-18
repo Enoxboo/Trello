@@ -170,14 +170,8 @@ export default function BoardView() {
 
     const handleAddCard = async (listId, cardTitle) => {
         try {
-            const apiCard = await cardService.create(cardTitle, listId);
-            const newCard = adaptCard(apiCard);
-            setBoard((b) => ({
-                ...b,
-                lists: b.lists.map((l) =>
-                    l.id === listId ? { ...l, cards: [...l.cards, newCard] } : l
-                ),
-            }));
+            await cardService.create(cardTitle, listId);
+            // L'état est mis à jour via l'événement SignalR CardCreated
         } catch (err) {
             setError(err.message);
         }
@@ -206,9 +200,8 @@ export default function BoardView() {
 
     const handleAddList = async (title) => {
         try {
-            const apiList = await listService.create(title, board.id);
-            const newList = { id: apiList.id, title: apiList.title, position: apiList.position, cards: [] };
-            setBoard((b) => ({ ...b, lists: [...b.lists, newList] }));
+            await listService.create(title, board.id);
+            // L'état est mis à jour via l'événement SignalR ListCreated
         } catch (err) {
             setError(err.message);
         }
