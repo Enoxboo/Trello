@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import BoardHeader from "../Components/BoardHeader";
 import ListColumn from "../Components/ListColumn";
 import CardModal from "../Components/CardModal";
@@ -47,26 +47,30 @@ export default function BoardView() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [selectedCard, setSelectedCard] = useState(null);
-
-    const loadBoard = useCallback(async () => {
-        try {
-            const boards = await boardService.getAll();
-            if (boards.length === 0) {
-                const newBoard = await boardService.create("Mon Board");
-                setBoard(adaptBoard(newBoard));
-            } else {
-                setBoard(adaptBoard(boards[0]));
-            }
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const initialized = useRef(false);
 
     useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
+
+        async function loadBoard() {
+            try {
+                const boards = await boardService.getAll();
+                if (boards.length === 0) {
+                    const newBoard = await boardService.create("Mon Board");
+                    setBoard(adaptBoard(newBoard));
+                } else {
+                    setBoard(adaptBoard(boards[0]));
+                }
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+
         loadBoard();
-    }, [loadBoard]);
+    }, []);
 
     const handleRenameBoard = async (newTitle) => {
         const prev = board;
