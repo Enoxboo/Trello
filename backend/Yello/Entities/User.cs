@@ -10,4 +10,5 @@ public class User
 
     public ICollection<Board> Boards { get; set; } = [];
     public ICollection<Comment> Comments { get; set; } = [];
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = [];
 }
