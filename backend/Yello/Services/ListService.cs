@@ -1,11 +1,13 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
 using Yello.DTOs;
 using Yello.Entities;
+using Yello.Hubs;
 
 namespace Yello.Services;
 
-public class ListService(AppDbContext db)
+public class ListService(AppDbContext db, IHubContext<BoardHub> hub)
 {
     public async Task<ListDto?> CreateAsync(CreateListDto dto, int userId)
     {
@@ -17,7 +19,11 @@ public class ListService(AppDbContext db)
         db.Lists.Add(list);
         await db.SaveChangesAsync();
 
-        return new ListDto(list.Id, list.Title, list.Position, []);
+        var listDto = new ListDto(list.Id, list.Title, list.Position, []);
+        await hub.Clients.Group($"board-{dto.BoardId}")
+            .SendAsync("ListCreated", new { boardId = dto.BoardId, list = listDto });
+
+        return listDto;
     }
 
     public async Task<ListDto?> UpdateAsync(int id, UpdateListDto dto, int userId)
@@ -30,6 +36,9 @@ public class ListService(AppDbContext db)
         list.Title = dto.Title;
         await db.SaveChangesAsync();
 
+        await hub.Clients.Group($"board-{list.BoardId}")
+            .SendAsync("ListUpdated", new { boardId = list.BoardId, listId = id, title = dto.Title });
+
         return new ListDto(list.Id, list.Title, list.Position, []);
     }
 
@@ -40,17 +49,20 @@ public class ListService(AppDbContext db)
             .FirstOrDefaultAsync(l => l.Id == id && l.Board.UserId == userId);
         if (list is null) return false;
 
+        int boardId = list.BoardId;
         db.Lists.Remove(list);
         await db.SaveChangesAsync();
 
-        // Reorder remaining lists
         var remaining = await db.Lists
-            .Where(l => l.BoardId == list.BoardId)
+            .Where(l => l.BoardId == boardId)
             .OrderBy(l => l.Position)
             .ToListAsync();
         for (int i = 0; i < remaining.Count; i++)
             remaining[i].Position = i;
         await db.SaveChangesAsync();
+
+        await hub.Clients.Group($"board-{boardId}")
+            .SendAsync("ListDeleted", new { boardId, listId = id });
 
         return true;
     }

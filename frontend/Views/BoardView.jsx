@@ -4,9 +4,9 @@ import ListColumn from "../Components/ListColumn";
 import CardModal from "../Components/CardModal";
 import AddListButton from "../Components/AddListButton";
 import { boardService, listService, cardService } from "../Services/boardService";
+import { useBoardHub } from "../hooks/useBoardHub";
 import "../style/board.css";
 
-// Convertit un CardDto backend vers la forme attendue par les composants
 function adaptCard(apiCard) {
     return {
         id: apiCard.id,
@@ -72,6 +72,79 @@ export default function BoardView() {
         loadBoard();
     }, []);
 
+    // ── SignalR handlers ─────────────────────────────────────────────────────
+    useBoardHub(board?.id, {
+        onCardCreated: ({ listId, card }) => {
+            setBoard((b) => {
+                const list = b.lists.find((l) => l.id === listId);
+                if (!list || list.cards.find((c) => c.id === card.id)) return b;
+                return {
+                    ...b,
+                    lists: b.lists.map((l) =>
+                        l.id === listId ? { ...l, cards: [...l.cards, adaptCard(card)] } : l
+                    ),
+                };
+            });
+        },
+        onCardUpdated: ({ card }) => {
+            setBoard((b) => ({
+                ...b,
+                lists: b.lists.map((l) => ({
+                    ...l,
+                    cards: l.cards.map((c) => (c.id === card.id ? adaptCard(card) : c)),
+                })),
+            }));
+        },
+        onCardMoved: ({ cardId, fromListId, toListId, toPosition }) => {
+            setBoard((b) => {
+                const sourceList = b.lists.find((l) => l.id === fromListId);
+                const card = sourceList?.cards.find((c) => c.id === cardId);
+                if (!card) return b;
+
+                return {
+                    ...b,
+                    lists: b.lists.map((l) => {
+                        if (l.id === fromListId && l.id !== toListId)
+                            return { ...l, cards: l.cards.filter((c) => c.id !== cardId) };
+                        if (l.id === toListId) {
+                            const filtered = l.cards.filter((c) => c.id !== cardId);
+                            filtered.splice(toPosition, 0, { ...card, position: toPosition });
+                            return { ...l, cards: filtered };
+                        }
+                        return l;
+                    }),
+                };
+            });
+        },
+        onCardDeleted: ({ cardId, listId }) => {
+            setBoard((b) => ({
+                ...b,
+                lists: b.lists.map((l) =>
+                    l.id === listId ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) } : l
+                ),
+            }));
+        },
+        onListCreated: ({ list }) => {
+            setBoard((b) => {
+                if (b.lists.find((l) => l.id === list.id)) return b;
+                return {
+                    ...b,
+                    lists: [...b.lists, { id: list.id, title: list.title, position: list.position, cards: [] }],
+                };
+            });
+        },
+        onListUpdated: ({ listId, title }) => {
+            setBoard((b) => ({
+                ...b,
+                lists: b.lists.map((l) => (l.id === listId ? { ...l, title } : l)),
+            }));
+        },
+        onListDeleted: ({ listId }) => {
+            setBoard((b) => ({ ...b, lists: b.lists.filter((l) => l.id !== listId) }));
+        },
+    });
+
+    // ── Handlers CRUD (optimiste + API) ─────────────────────────────────────
     const handleRenameBoard = async (newTitle) => {
         const prev = board;
         setBoard((b) => ({ ...b, title: newTitle }));
@@ -166,20 +239,16 @@ export default function BoardView() {
         }
     };
 
-    // Appelé par ListColumn après un drop réussi
     const handleMoveCard = async (cardId, sourceListId, targetListId, targetPosition) => {
         const prev = board;
-
-        // Mise à jour optimiste
         setBoard((b) => {
             const sourceList = b.lists.find((l) => l.id === sourceListId);
             const card = sourceList?.cards.find((c) => c.id === cardId);
             if (!card) return b;
 
             const newLists = b.lists.map((l) => {
-                if (l.id === sourceListId && l.id !== targetListId) {
+                if (l.id === sourceListId && l.id !== targetListId)
                     return { ...l, cards: l.cards.filter((c) => c.id !== cardId) };
-                }
                 if (l.id === targetListId) {
                     const filtered = l.cards.filter((c) => c.id !== cardId);
                     filtered.splice(targetPosition, 0, { ...card, position: targetPosition });
