@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Label> Labels => Set<Label>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
