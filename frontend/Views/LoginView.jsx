@@ -1,37 +1,29 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import LoginForm from "../components/LoginForm";
 import { LoginModel } from "../models/AuthModel";
-import { loginService } from "../services/authService";
+import { loginService, saveTokens } from "../services/authService";
 import "../style/login.css";
 import yomoLogo from "../src/assets/yomologo.png";
 
-// Composant principal de la page de connexion
-// Il gère l'état du formulaire, les erreurs, le message de succès
-// et appelle le service de connexion lors de la soumission.
 export default function LoginView() {
     const [form, setForm] = useState(new LoginModel());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+        setForm({ ...form, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
-        setMessage("");
         setLoading(true);
-
         try {
             const result = await loginService(form);
-            setMessage(result.message || "Connexion réussie");
-            console.log("Token reçu :", result.token);
+            saveTokens(result.accessToken, result.refreshToken);
+            navigate("/board");
         } catch (err) {
             setError(err.message);
         } finally {
@@ -46,15 +38,12 @@ export default function LoginView() {
                 <div className="login-left">
                     <img src={yomoLogo} alt="Logo Yomo" className="login-logo" />
                 </div>
-
                 <div className="login-right">
                     <div className="login-card">
                         <h1 className="login-title">Connexion</h1>
-
                         <p className="login-subtitle">
                             Bienvenue sur <span className="spanYello">Yello</span>
                         </p>
-
                         <LoginForm
                             form={form}
                             onChange={handleChange}
@@ -62,9 +51,6 @@ export default function LoginView() {
                             loading={loading}
                             error={error}
                         />
-
-                        {message && <p className="success-message">{message}</p>}
-
                         <p className="switch-text">
                             Pas encore de compte ?{" "}
                             <Link to="/register" className="switch-link">

@@ -1,36 +1,31 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import RegisterForm from "../Components/RegisterForm";
 import { RegisterModel } from "../Models/AuthModel";
+import { registerService, saveTokens } from "../Services/authService";
 import "../style/login.css";
 import yomoLogo from "../src/assets/yomologo.png";
 
-
-// Composant de formulaire d'inscription
-// Il affiche le formulaire,
 export default function RegisterView() {
     const [form, setForm] = useState(new RegisterModel());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+        setForm({ ...form, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
-        setMessage("");
         setLoading(true);
-
         try {
-            console.log("Données envoyées :", form);
-            setMessage("Inscription réussie");
+            const result = await registerService(form);
+            saveTokens(result.accessToken, result.refreshToken);
+            navigate("/board");
         } catch (err) {
-            setError("Erreur lors de l'inscription");
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -43,14 +38,12 @@ export default function RegisterView() {
                 <div className="login-left">
                     <img src={yomoLogo} alt="Logo Yomo" className="login-logo" />
                 </div>
-
                 <div className="login-right">
                     <div className="login-card">
                         <h1 className="login-title">Inscription</h1>
                         <p className="login-subtitle">
                             Créez votre compte sur <span className="spanYello">Yello</span>
                         </p>
-
                         <RegisterForm
                             form={form}
                             onChange={handleChange}
@@ -58,8 +51,6 @@ export default function RegisterView() {
                             loading={loading}
                             error={error}
                         />
-
-                        {message && <p className="success-message">{message}</p>}
                     </div>
                 </div>
             </div>
