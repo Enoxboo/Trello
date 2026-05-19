@@ -1,13 +1,7 @@
 import { getDueDateStatus, formatDate } from "../src/utils/dateUtils";
 import { Trash2 } from "lucide-react";
 
-
-// Composant pour afficher une carte dans la liste
-// Il affiche le titre, les labels, la date d'échéance, les commentaires et les membres
-// Il applique des styles différents selon la proximité de la date d'échéance
-// et appelle onClick pour ouvrir le modal de détails
-
-export default function CardItem({ card, onClick, onDelete }) {
+export default function CardItem({ card, listId, onClick, onDelete }) {
     const dueDateStatus = getDueDateStatus(card.dueDate);
 
     const handleDelete = (e) => {
@@ -15,18 +9,36 @@ export default function CardItem({ card, onClick, onDelete }) {
         onDelete(card.id);
     };
 
+    const handleDragStart = (e) => {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("cardId", String(card.id));
+        e.dataTransfer.setData("sourceListId", String(listId));
+        // Léger délai pour que le ghost apparaisse avant l'opacité réduite
+        setTimeout(() => e.target.classList.add("card--dragging"), 0);
+    };
+
+    const handleDragEnd = (e) => {
+        e.target.classList.remove("card--dragging");
+    };
+
     return (
-        <article className="card" onClick={() => onClick(card)}>
+        <article
+            className="card"
+            draggable
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onClick={() => onClick(card)}
+        >
             {card.labels.length > 0 && (
                 <div className="card-labels">
                     {card.labels.map((label) => (
                         <span
-                            key={label.name}
+                            key={label.id ?? label.name}
                             className="card-label"
                             style={{ backgroundColor: label.color }}
                         >
-        {label.name}
-    </span>
+                            {label.name}
+                        </span>
                     ))}
                 </div>
             )}
@@ -46,8 +58,8 @@ export default function CardItem({ card, onClick, onDelete }) {
             <div className="card-footer">
                 {card.dueDate && (
                     <span className={`card-due card-due--${dueDateStatus}`}>
-            {formatDate(card.dueDate)}
-          </span>
+                        {formatDate(card.dueDate)}
+                    </span>
                 )}
                 {card.comments.length > 0 && (
                     <span className="card-comments">{card.comments.length}</span>
