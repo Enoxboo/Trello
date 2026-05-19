@@ -3,7 +3,7 @@ import BoardHeader from "../Components/BoardHeader";
 import ListColumn from "../Components/ListColumn";
 import CardModal from "../Components/CardModal";
 import AddListButton from "../Components/AddListButton";
-import { boardService, listService, cardService } from "../Services/boardService";
+import { boardService, listService, cardService, commentService, labelService } from "../Services/boardService";
 import { useBoardHub } from "../hooks/useBoardHub";
 import "../style/board.css";
 
@@ -232,6 +232,67 @@ export default function BoardView() {
         }
     };
 
+    const handleAddComment = async (cardId, content) => {
+        const comment = await commentService.create(cardId, content);
+        const adapted = { id: comment.id, author: comment.authorUsername, content: comment.content, date: comment.createdAt };
+        setSelectedCard((c) => c ? { ...c, comments: [...c.comments, adapted] } : c);
+        setBoard((b) => ({
+            ...b,
+            lists: b.lists.map((l) => ({
+                ...l,
+                cards: l.cards.map((c) => c.id === cardId ? { ...c, comments: [...c.comments, adapted] } : c),
+            })),
+        }));
+    };
+
+    const handleUpdateComment = async (cardId, commentId, content) => {
+        await commentService.update(cardId, commentId, content);
+        setSelectedCard((c) => c ? { ...c, comments: c.comments.map((cm) => cm.id === commentId ? { ...cm, content } : cm) } : c);
+        setBoard((b) => ({
+            ...b,
+            lists: b.lists.map((l) => ({
+                ...l,
+                cards: l.cards.map((c) => c.id === cardId ? { ...c, comments: c.comments.map((cm) => cm.id === commentId ? { ...cm, content } : cm) } : c),
+            })),
+        }));
+    };
+
+    const handleDeleteComment = async (cardId, commentId) => {
+        await commentService.delete(cardId, commentId);
+        setSelectedCard((c) => c ? { ...c, comments: c.comments.filter((cm) => cm.id !== commentId) } : c);
+        setBoard((b) => ({
+            ...b,
+            lists: b.lists.map((l) => ({
+                ...l,
+                cards: l.cards.map((c) => c.id === cardId ? { ...c, comments: c.comments.filter((cm) => cm.id !== commentId) } : c),
+            })),
+        }));
+    };
+
+    const handleAddLabel = async (cardId, name, color) => {
+        const label = await labelService.create(cardId, name, color);
+        setSelectedCard((c) => c ? { ...c, labels: [...c.labels, { id: label.id, name: label.name, color: label.color }] } : c);
+        setBoard((b) => ({
+            ...b,
+            lists: b.lists.map((l) => ({
+                ...l,
+                cards: l.cards.map((c) => c.id === cardId ? { ...c, labels: [...c.labels, { id: label.id, name: label.name, color: label.color }] } : c),
+            })),
+        }));
+    };
+
+    const handleDeleteLabel = async (cardId, labelId) => {
+        await labelService.delete(cardId, labelId);
+        setSelectedCard((c) => c ? { ...c, labels: c.labels.filter((l) => l.id !== labelId) } : c);
+        setBoard((b) => ({
+            ...b,
+            lists: b.lists.map((l) => ({
+                ...l,
+                cards: l.cards.map((c) => c.id === cardId ? { ...c, labels: c.labels.filter((l) => l.id !== labelId) } : c),
+            })),
+        }));
+    };
+
     const handleMoveCard = async (cardId, sourceListId, targetListId, targetPosition) => {
         const prev = board;
         setBoard((b) => {
@@ -288,6 +349,11 @@ export default function BoardView() {
                     card={selectedCard}
                     onClose={() => setSelectedCard(null)}
                     onUpdate={handleCardUpdate}
+                    onAddComment={(content) => handleAddComment(selectedCard.id, content)}
+                    onUpdateComment={(commentId, content) => handleUpdateComment(selectedCard.id, commentId, content)}
+                    onDeleteComment={(commentId) => handleDeleteComment(selectedCard.id, commentId)}
+                    onAddLabel={(name, color) => handleAddLabel(selectedCard.id, name, color)}
+                    onDeleteLabel={(labelId) => handleDeleteLabel(selectedCard.id, labelId)}
                 />
             )}
         </main>
