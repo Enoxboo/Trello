@@ -8,28 +8,25 @@ const PRESET_LABELS = [
     { name: "test",   color: "#f39c12" },
 ];
 
-// Composant pour gérer les labels d'une carte dans le modal de la carte
-// Il affiche une liste de labels prédéfinis et permet d'en ajouter de nouveaux
-// Les labels sélectionnés sont mis en surbrillance
-export default function CardModalLabels({ labels, onChange }) {
+export default function CardModalLabels({ labels, onAdd, onDelete }) {
     const [newLabel, setNewLabel] = useState("");
     const [newColor, setNewColor] = useState("#805e73");
 
-    // labels est un tableau d'objets { name, color }
-    const isActive = (name) => labels.some((l) => l.name === name);
+    const findActive = (name) => labels.find((l) => l.name === name);
 
-    const toggle = (name, color) => {
-        if (isActive(name)) {
-            onChange(labels.filter((l) => l.name !== name));
+    const toggle = async (name, color) => {
+        const existing = findActive(name);
+        if (existing) {
+            await onDelete(existing.id);
         } else {
-            onChange([...labels, { name, color }]);
+            await onAdd(name, color);
         }
     };
 
-    const addCustom = () => {
+    const addCustom = async () => {
         const trimmed = newLabel.trim();
-        if (trimmed && !isActive(trimmed)) {
-            onChange([...labels, { name: trimmed, color: newColor }]);
+        if (trimmed && !findActive(trimmed)) {
+            await onAdd(trimmed, newColor);
             setNewLabel("");
             setNewColor("#805e73");
         }
@@ -45,24 +42,23 @@ export default function CardModalLabels({ labels, onChange }) {
                 {PRESET_LABELS.map(({ name, color }) => (
                     <button
                         key={name}
-                        className={`modal-label-btn ${isActive(name) ? "modal-label-btn--active" : ""}`}
+                        className={`modal-label-btn ${findActive(name) ? "modal-label-btn--active" : ""}`}
                         style={{ "--label-color": color }}
                         onClick={() => toggle(name, color)}
                     >
                         {name}
-                        {isActive(name) && " ✓"}
+                        {findActive(name) && " ✓"}
                     </button>
                 ))}
 
-                {/* Labels custom ajoutés dynamiquement */}
                 {labels
                     .filter((l) => !PRESET_LABELS.some((p) => p.name === l.name))
-                    .map(({ name, color }) => (
+                    .map(({ id, name, color }) => (
                         <button
-                            key={name}
+                            key={id}
                             className="modal-label-btn modal-label-btn--active"
                             style={{ "--label-color": color }}
-                            onClick={() => toggle(name, color)}
+                            onClick={() => onDelete(id)}
                         >
                             {name} ✓
                         </button>

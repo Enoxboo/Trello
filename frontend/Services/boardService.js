@@ -51,3 +51,19 @@ export const cardService = {
         apiFetch(`/cards/${id}/move`, { method: "PUT", body: JSON.stringify({ targetListId, position }) }),
     delete: (id) => apiFetch(`/cards/${id}`, { method: "DELETE" }),
 };
+
+export const commentService = {
+    create: (cardId, content) =>
+        apiFetch(`/cards/${cardId}/comments`, { method: "POST", body: JSON.stringify({ content }) }),
+    update: (cardId, commentId, content) =>
+        apiFetch(`/cards/${cardId}/comments/${commentId}`, { method: "PUT", body: JSON.stringify({ content }) }),
+    delete: (cardId, commentId) =>
+        apiFetch(`/cards/${cardId}/comments/${commentId}`, { method: "DELETE" }),
+};
+
+export const labelService = {
+    create: (cardId, name, color) =>
+        apiFetch(`/cards/${cardId}/labels`, { method: "POST", body: JSON.stringify({ name, color }) }),
+    delete: (cardId, labelId) =>
+        apiFetch(`/cards/${cardId}/labels/${labelId}`, { method: "DELETE" }),
+};
