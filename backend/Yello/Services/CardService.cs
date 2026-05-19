@@ -1,11 +1,13 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
 using Yello.DTOs;
 using Yello.Entities;
+using Yello.Hubs;
 
 namespace Yello.Services;
 
-public class CardService(AppDbContext db)
+public class CardService(AppDbContext db, IHubContext<BoardHub> hub)
 {
     public async Task<CardDto?> CreateAsync(CreateCardDto dto, int userId)
     {
@@ -19,7 +21,11 @@ public class CardService(AppDbContext db)
         db.Cards.Add(card);
         await db.SaveChangesAsync();
 
-        return new CardDto(card.Id, card.Title, card.Description, card.DueDate, card.Position, [], []);
+        var cardDto = new CardDto(card.Id, card.Title, card.Description, card.DueDate, card.Position, [], []);
+        await hub.Clients.Group($"board-{list.BoardId}")
+            .SendAsync("CardCreated", new { boardId = list.BoardId, listId = dto.ListId, card = cardDto });
+
+        return cardDto;
     }
 
     public async Task<CardDto?> UpdateAsync(int id, UpdateCardDto dto, int userId)
@@ -36,7 +42,12 @@ public class CardService(AppDbContext db)
         card.DueDate = dto.DueDate;
         await db.SaveChangesAsync();
 
-        return MapToDto(card);
+        var cardDto = MapToDto(card);
+        int boardId = card.List.Board.Id;
+        await hub.Clients.Group($"board-{boardId}")
+            .SendAsync("CardUpdated", new { boardId, card = cardDto });
+
+        return cardDto;
     }
 
     public async Task<CardDto?> MoveAsync(int id, MoveCardDto dto, int userId)
@@ -53,17 +64,16 @@ public class CardService(AppDbContext db)
             .FirstOrDefaultAsync(l => l.Id == dto.TargetListId && l.Board.UserId == userId);
         if (targetList is null) return null;
 
-        int oldListId = card.ListId;
+        int boardId = card.List.Board.Id;
+        int fromListId = card.ListId;
 
-        // Remove from old list and reorder
         var oldListCards = await db.Cards
-            .Where(c => c.ListId == oldListId && c.Id != id)
+            .Where(c => c.ListId == fromListId && c.Id != id)
             .OrderBy(c => c.Position)
             .ToListAsync();
         for (int i = 0; i < oldListCards.Count; i++)
             oldListCards[i].Position = i;
 
-        // Insert in new list
         var newListCards = await db.Cards
             .Where(c => c.ListId == dto.TargetListId && c.Id != id)
             .OrderBy(c => c.Position)
@@ -75,7 +85,18 @@ public class CardService(AppDbContext db)
         card.ListId = dto.TargetListId;
         await db.SaveChangesAsync();
 
-        return MapToDto(card);
+        var cardDto = MapToDto(card);
+        await hub.Clients.Group($"board-{boardId}")
+            .SendAsync("CardMoved", new
+            {
+                boardId,
+                cardId = id,
+                fromListId,
+                toListId = dto.TargetListId,
+                toPosition = dto.Position
+            });
+
+        return cardDto;
     }
 
     public async Task<bool> DeleteAsync(int id, int userId)
@@ -86,6 +107,7 @@ public class CardService(AppDbContext db)
         if (card is null) return false;
 
         int listId = card.ListId;
+        int boardId = card.List.Board.Id;
         db.Cards.Remove(card);
         await db.SaveChangesAsync();
 
@@ -93,6 +115,9 @@ public class CardService(AppDbContext db)
         for (int i = 0; i < remaining.Count; i++)
             remaining[i].Position = i;
         await db.SaveChangesAsync();
+
+        await hub.Clients.Group($"board-{boardId}")
+            .SendAsync("CardDeleted", new { boardId, cardId = id, listId });
 
         return true;
     }
