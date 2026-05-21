@@ -1,83 +1,121 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import BoardHeader from "../Components/BoardHeader";
 import ListColumn from "../Components/ListColumn";
 import CardModal from "../Components/CardModal";
 import AddListButton from "../Components/AddListButton";
-import { mockBoard, ListModel } from "../Models/BoardModel";
+import {
+    getBoardById,
+    updateBoard,
+    getListsByBoard,
+    createList,
+    updateList,
+    deleteList,
+} from "../Services/boardService";
+import {
+    getCardsByList,
+    createCard,
+    updateCard,
+    deleteCard,
+} from "../Services/cardService";
 import "../style/board.css";
 
-// Composant principal de la page du tableau
-// Gère l'état du tableau, des listes et des cartes
-// et passe les fonctions de mise à jour aux composants enfants.
-
 export default function BoardView() {
-    const [board, setBoard] = useState(mockBoard);
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [board, setBoard] = useState(null);
+    const [lists, setLists] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const handleRenameBoard = (newTitle) => {
+    // Charge le board et toutes ses listes avec leurs cartes au montage du composant
+    useEffect(() => {
+        async function load() {
+            try {
+                const [boardData, listsData] = await Promise.all([
+                    getBoardById(id),
+                    getListsByBoard(id),
+                ]);
+                setBoard(boardData);
+
+                // Charge les cartes de chaque liste en parallèle
+                const listsWithCards = await Promise.all(
+                    listsData.map(async (list) => ({
+                        ...list,
+                        cards: await getCardsByList(list.id),
+                    }))
+                );
+                setLists(listsWithCards);
+            } catch {
+                navigate("/boards");
+            } finally {
+                setLoading(false);
+            }
+        }
+        load();
+    }, [id, navigate]);
+
+    const handleRenameBoard = async (newTitle) => {
+        await updateBoard(id, newTitle);
         setBoard((prev) => ({ ...prev, title: newTitle }));
     };
 
-    const handleRenameList = (listId, newTitle) => {
-        setBoard((prev) => ({
-            ...prev,
-            lists: prev.lists.map((l) =>
-                l.id === listId ? { ...l, title: newTitle } : l
-            ),
-        }));
+    const handleRenameList = async (listId, newTitle) => {
+        await updateList(listId, newTitle);
+        setLists((prev) =>
+            prev.map((l) => (l.id === listId ? { ...l, title: newTitle } : l))
+        );
     };
 
-    const handleAddCard = (listId, newCard) => {
-        setBoard((prev) => ({
-            ...prev,
-            lists: prev.lists.map((l) =>
+    const handleAddCard = async (listId, cardTitle) => {
+        const newCard = await createCard(listId, cardTitle);
+        setLists((prev) =>
+            prev.map((l) =>
                 l.id === listId ? { ...l, cards: [...l.cards, newCard] } : l
-            ),
-        }));
+            )
+        );
     };
 
     const handleCardUpdate = (updatedCard) => {
-        setBoard((prev) => ({
-            ...prev,
-            lists: prev.lists.map((l) => ({
+        setLists((prev) =>
+            prev.map((l) => ({
                 ...l,
-                cards: l.cards.map((c) =>
-                    c.id === updatedCard.id ? updatedCard : c
-                ),
-            })),
-        }));
+                cards: l.cards.map((c) => (c.id === updatedCard.id ? updatedCard : c)),
+            }))
+        );
         setSelectedCard(updatedCard);
     };
 
-    const handleAddList = (title) => {
-        const newList = new ListModel(Date.now(), title, []);
-        setBoard((prev) => ({ ...prev, lists: [...prev.lists, newList] }));
+    const handleAddList = async (title) => {
+        const newList = await createList(id, title);
+        setLists((prev) => [...prev, { ...newList, cards: [] }]);
     };
 
-    const handleDeleteList = (listId) => {
-        setBoard((prev) => ({
-            ...prev,
-            lists: prev.lists.filter((l) => l.id !== listId),
-        }));
+    const handleDeleteList = async (listId) => {
+        await deleteList(listId);
+        setLists((prev) => prev.filter((l) => l.id !== listId));
     };
 
-    const handleDeleteCard = (listId, cardId) => {
-        setBoard((prev) => ({
-            ...prev,
-            lists: prev.lists.map((l) =>
+    const handleDeleteCard = async (listId, cardId) => {
+        await deleteCard(cardId);
+        setLists((prev) =>
+            prev.map((l) =>
                 l.id === listId
                     ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) }
                     : l
-            ),
-        }));
+            )
+        );
     };
+
+    if (loading) return <p style={{ padding: "2rem" }}>Chargement…</p>;
+    if (!board) return null;
 
     return (
         <main className="board-page" aria-label="Vue du tableau">
             <BoardHeader title={board.title} onRename={handleRenameBoard} />
 
             <div className="board-lists">
-                {board.lists.map((list) => (
+                {lists.map((list) => (
                     <ListColumn
                         key={list.id}
                         list={list}
