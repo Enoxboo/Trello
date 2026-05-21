@@ -42,6 +42,10 @@ builder.Services.AddCors(options =>
 // Injection de dépendances : les services sont instanciés par ASP.NET Core à la demande
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<BoardService>();
+builder.Services.AddScoped<ListService>();
+builder.Services.AddScoped<CardService>();
+builder.Services.AddScoped<CommentService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
