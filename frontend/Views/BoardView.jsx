@@ -17,6 +17,7 @@ import {
     createCard,
     updateCard,
     deleteCard,
+    moveCard,
 } from "../Services/cardService";
 import "../style/board.css";
 
@@ -27,6 +28,8 @@ export default function BoardView() {
     const [lists, setLists] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
     const [loading, setLoading] = useState(true);
+    // Référence à la carte en cours de drag pour éviter les re-renders
+    const dragRef = { cardId: null, sourceListId: null };
 
     // Charge le board et toutes ses listes avec leurs cartes au montage du composant
     useEffect(() => {
@@ -96,6 +99,48 @@ export default function BoardView() {
         setLists((prev) => prev.filter((l) => l.id !== listId));
     };
 
+    const handleDragStart = (e, cardId) => {
+        const sourceListId = lists.find((l) => l.cards.some((c) => c.id === cardId))?.id;
+        dragRef.cardId = cardId;
+        dragRef.sourceListId = sourceListId;
+        e.dataTransfer.setData("cardId", cardId);
+    };
+
+    // Mise à jour optimiste : on déplace la carte dans l'état local immédiatement,
+    // puis on persiste en base. En cas d'erreur, on restaure l'état précédent.
+    const handleDrop = async (e, targetListId) => {
+        const cardId = parseInt(e.dataTransfer.getData("cardId"), 10);
+        if (!cardId) return;
+
+        const snapshot = lists;
+
+        setLists((prev) => {
+            const card = prev
+                .flatMap((l) => l.cards)
+                .find((c) => c.id === cardId);
+            if (!card) return prev;
+
+            const withoutCard = prev.map((l) => ({
+                ...l,
+                cards: l.cards.filter((c) => c.id !== cardId),
+            }));
+
+            return withoutCard.map((l) =>
+                l.id === targetListId
+                    ? { ...l, cards: [...l.cards, { ...card, listId: targetListId }] }
+                    : l
+            );
+        });
+
+        try {
+            const targetList = lists.find((l) => l.id === targetListId);
+            const newPosition = targetList ? targetList.cards.length : 0;
+            await moveCard(cardId, targetListId, newPosition);
+        } catch {
+            setLists(snapshot);
+        }
+    };
+
     const handleDeleteCard = async (listId, cardId) => {
         await deleteCard(cardId);
         setLists((prev) =>
@@ -124,6 +169,9 @@ export default function BoardView() {
                         onCardClick={setSelectedCard}
                         onDeleteList={handleDeleteList}
                         onDeleteCard={handleDeleteCard}
+                        onDragStart={handleDragStart}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
                     />
                 ))}
                 <AddListButton onAdd={handleAddList} />

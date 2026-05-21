@@ -1,14 +1,23 @@
 import { useState } from "react";
 import CardItem from "./CardItem";
 import AddCardButton from "./AddCardButton";
-import { CardModel } from "../Models/BoardModel";
 import { Trash2 } from "lucide-react";
 
-
-export default function ListColumn({ list, onAddCard, onRenameList, onCardClick, onDeleteList, onDeleteCard }) {
+export default function ListColumn({
+    list,
+    onAddCard,
+    onRenameList,
+    onCardClick,
+    onDeleteList,
+    onDeleteCard,
+    onDragStart,
+    onDragOver,
+    onDrop,
+}) {
     const [editing, setEditing] = useState(false);
     const [title, setTitle] = useState(list.title);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [isDragOver, setIsDragOver] = useState(false);
 
     const handleBlur = () => {
         setEditing(false);
@@ -16,13 +25,32 @@ export default function ListColumn({ list, onAddCard, onRenameList, onCardClick,
         else setTitle(list.title);
     };
 
+    // Passe juste le titre à la vue parent qui appellera l'API
     const handleAddCard = (cardTitle) => {
-        const newCard = new CardModel(Date.now(), cardTitle);
-        onAddCard(list.id, newCard);
+        onAddCard(list.id, cardTitle);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+        onDragOver(e, list.id);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        onDrop(e, list.id);
     };
 
     return (
-        <section className="list-column" aria-label={`Liste : ${list.title}`}>
+        <section
+            className={`list-column${isDragOver ? " list-column--drag-over" : ""}`}
+            aria-label={`Liste : ${list.title}`}
+            onDragOver={handleDragOver}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+        >
             <div className="list-header">
                 {editing ? (
                     <input
@@ -70,6 +98,7 @@ export default function ListColumn({ list, onAddCard, onRenameList, onCardClick,
                         card={card}
                         onClick={onCardClick}
                         onDelete={(cardId) => onDeleteCard(list.id, cardId)}
+                        onDragStart={onDragStart}
                     />
                 ))}
             </div>
