@@ -1,14 +1,13 @@
 import { getDueDateStatus, formatDate } from "../src/utils/dateUtils";
 import { Trash2 } from "lucide-react";
 
-
-// Composant pour afficher une carte dans la liste
-// Il affiche le titre, les labels, la date d'échéance, les commentaires et les membres
-// Il applique des styles différents selon la proximité de la date d'échéance
-// et appelle onClick pour ouvrir le modal de détails
-
-export default function CardItem({ card, onClick, onDelete }) {
+export default function CardItem({ card, onClick, onDelete, onDragStart }) {
     const dueDateStatus = getDueDateStatus(card.dueDate);
+    const comments = card.comments ?? [];
+    // L'API retourne members comme [{ userId, username }], on affiche username
+    const members = (card.members ?? []).map((m) =>
+        typeof m === "string" ? m : m.username
+    );
 
     const handleDelete = (e) => {
         e.stopPropagation();
@@ -16,17 +15,25 @@ export default function CardItem({ card, onClick, onDelete }) {
     };
 
     return (
-        <article className="card" onClick={() => onClick(card)}>
-            {card.labels.length > 0 && (
+        <article
+            className="card"
+            onClick={() => onClick(card)}
+            draggable
+            onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                onDragStart(e, card.id);
+            }}
+        >
+            {card.labels && card.labels.length > 0 && (
                 <div className="card-labels">
                     {card.labels.map((label) => (
                         <span
-                            key={label.name}
+                            key={label.id ?? label.name}
                             className="card-label"
                             style={{ backgroundColor: label.color }}
                         >
-        {label.name}
-    </span>
+                            {label.name}
+                        </span>
                     ))}
                 </div>
             )}
@@ -46,16 +53,16 @@ export default function CardItem({ card, onClick, onDelete }) {
             <div className="card-footer">
                 {card.dueDate && (
                     <span className={`card-due card-due--${dueDateStatus}`}>
-            {formatDate(card.dueDate)}
-          </span>
+                        {formatDate(card.dueDate)}
+                    </span>
                 )}
-                {card.comments.length > 0 && (
-                    <span className="card-comments">{card.comments.length}</span>
+                {comments.length > 0 && (
+                    <span className="card-comments">{comments.length}</span>
                 )}
-                {card.members.length > 0 && (
+                {members.length > 0 && (
                     <div className="card-members">
-                        {card.members.map((m) => (
-                            <span key={m} className="card-avatar" title={m}>{m}</span>
+                        {members.map((m) => (
+                            <span key={m} className="card-avatar" title={m}>{m[0]}</span>
                         ))}
                     </div>
                 )}

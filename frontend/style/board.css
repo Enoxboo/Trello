@@ -578,3 +578,17 @@
         border-radius: 4px;
     }
 }
+/* Indicateur visuel lors du drag & drop d'une carte sur une liste */
+.list-column--drag-over {
+    outline: 2px dashed #0052cc;
+    background: rgba(0, 82, 204, 0.05);
+}
+
+.card[draggable="true"] {
+    cursor: grab;
+}
+
+.card[draggable="true"]:active {
+    cursor: grabbing;
+    opacity: 0.6;
+}
