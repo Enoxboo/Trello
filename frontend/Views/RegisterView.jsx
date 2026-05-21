@@ -1,36 +1,30 @@
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import RegisterForm from "../Components/RegisterForm";
 import { RegisterModel } from "../Models/AuthModel";
+import { registerService } from "../Services/authService";
 import "../style/login.css";
 import yomoLogo from "../src/assets/yomologo.png";
 
-
-// Composant de formulaire d'inscription
-// Il affiche le formulaire,
 export default function RegisterView() {
     const [form, setForm] = useState(new RegisterModel());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
+    const navigate = useNavigate();
 
     const handleChange = (e) => {
-        setForm({
-            ...form,
-            [e.target.name]: e.target.value,
-        });
+        setForm({ ...form, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
-        setMessage("");
         setLoading(true);
-
         try {
-            console.log("Données envoyées :", form);
-            setMessage("Inscription réussie");
+            await registerService(form);
+            navigate("/boards");
         } catch (err) {
-            setError("Erreur lors de l'inscription");
+            setError(err.message);
         } finally {
             setLoading(false);
         }
@@ -38,19 +32,16 @@ export default function RegisterView() {
 
     return (
         <main className="login-page" aria-label="Page d'inscription">
-        <div className="login-page">
             <div className="login-wrapper">
                 <div className="login-left">
-                    <img src={yomoLogo} alt="Logo Yomo" className="login-logo" />
+                    <img src={yomoLogo} alt="Logo Yello" className="login-logo" />
                 </div>
-
                 <div className="login-right">
                     <div className="login-card">
                         <h1 className="login-title">Inscription</h1>
                         <p className="login-subtitle">
                             Créez votre compte sur <span className="spanYello">Yello</span>
                         </p>
-
                         <RegisterForm
                             form={form}
                             onChange={handleChange}
@@ -58,12 +49,13 @@ export default function RegisterView() {
                             loading={loading}
                             error={error}
                         />
-
-                        {message && <p className="success-message">{message}</p>}
+                        <p className="switch-text">
+                            Déjà un compte ?{" "}
+                            <Link to="/login" className="switch-link">Se connecter</Link>
+                        </p>
                     </div>
                 </div>
             </div>
-        </div>
         </main>
     );
 }
