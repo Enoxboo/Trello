@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import BoardHeader from "../Components/BoardHeader";
 import ListColumn from "../Components/ListColumn";
@@ -19,6 +19,15 @@ import {
     deleteCard,
     moveCard,
 } from "../Services/cardService";
+import {
+    joinBoard,
+    leaveBoard,
+    onCardCreated,
+    onCardMoved,
+    onCardUpdated,
+    onListUpdated,
+    disconnectFromHub,
+} from "../Services/signalRService";
 import "../style/board.css";
 
 export default function BoardView() {
@@ -28,8 +37,7 @@ export default function BoardView() {
     const [lists, setLists] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
     const [loading, setLoading] = useState(true);
-    // Référence à la carte en cours de drag pour éviter les re-renders
-    const dragRef = { cardId: null, sourceListId: null };
+    const dragRef = useRef({ cardId: null, sourceListId: null });
 
     // Charge le board et toutes ses listes avec leurs cartes au montage du composant
     useEffect(() => {
@@ -57,6 +65,57 @@ export default function BoardView() {
         }
         load();
     }, [id, navigate]);
+
+    // Connexion au hub SignalR quand le board est chargé.
+    // useEffect retourne une fonction de nettoyage : on quitte le groupe et on coupe la connexion
+    // quand l'utilisateur quitte la page.
+    useEffect(() => {
+        if (!board) return;
+        const boardId = parseInt(id, 10);
+
+        joinBoard(boardId).catch(() => {});
+
+        onCardCreated((card) => {
+            setLists((prev) =>
+                prev.map((l) =>
+                    l.id === card.listId ? { ...l, cards: [...l.cards, card] } : l
+                )
+            );
+        });
+
+        onCardMoved((move) => {
+            setLists((prev) => {
+                const card = prev.flatMap((l) => l.cards).find((c) => c.id === move.cardId);
+                if (!card) return prev;
+                return prev.map((l) => ({
+                    ...l,
+                    cards: l.id === move.listId
+                        ? [...l.cards.filter((c) => c.id !== move.cardId), { ...card, listId: move.listId }]
+                        : l.cards.filter((c) => c.id !== move.cardId),
+                }));
+            });
+        });
+
+        onCardUpdated((updated) => {
+            setLists((prev) =>
+                prev.map((l) => ({
+                    ...l,
+                    cards: l.cards.map((c) => (c.id === updated.id ? updated : c)),
+                }))
+            );
+        });
+
+        onListUpdated((updatedList) => {
+            setLists((prev) =>
+                prev.map((l) => (l.id === updatedList.id ? { ...l, ...updatedList } : l))
+            );
+        });
+
+        return () => {
+            leaveBoard(boardId).catch(() => {});
+            disconnectFromHub();
+        };
+    }, [board, id]);
 
     const handleRenameBoard = async (newTitle) => {
         await updateBoard(id, newTitle);
