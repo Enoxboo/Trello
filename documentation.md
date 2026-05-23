@@ -64,7 +64,7 @@ API ASP.NET Core (port 5245)
 PostgreSQL (yello_db)
 ```
 
-L'utilisateur s'inscrit ou se connecte. Le backend génère un JWT (access token) et un refresh token. Le frontend stocke ces tokens dans le localStorage et les joint à chaque requête. Si l'access token expire, le frontend en demande automatiquement un nouveau via le refresh token.
+L'utilisateur s'inscrit ou se connecte. Le backend génère un JWT (access token) et un refresh token. Le frontend stocke l'access token dans le sessionStorage (isolé par onglet) et le refresh token dans le localStorage. Ils sont joints à chaque requête. Si l'access token expire, le frontend en demande automatiquement un nouveau via le refresh token.
 
 ---
 
@@ -262,6 +262,9 @@ L'API REST de Yello assure la communication entre le frontend React et la base d
 | GET | /api/boards/{id} | Détail d'un board |
 | PUT | /api/boards/{id} | Modifier le titre |
 | DELETE | /api/boards/{id} | Supprimer (propriétaire uniquement) |
+| POST | /api/boards/{id}/invite-code | Générer un code d'invitation |
+| POST | /api/boards/{id}/leave | Quitter un board (membres uniquement) |
+| POST | /api/boards/join | Rejoindre via code d'invitation |
 
 ### Listes
 
@@ -310,7 +313,7 @@ L'API REST de Yello assure la communication entre le frontend React et la base d
 
 Méthodes appelables depuis le client : `JoinBoard(boardId)`, `LeaveBoard(boardId)`.
 
-Les événements émis par le serveur vers les clients du groupe : `CardCreated`, `CardUpdated`, `CardMoved`, `CardDeleted`, `ListCreated`, `ListUpdated`, `ListDeleted`, `CommentAdded`, `UserJoined`, `UserLeft`.
+Les événements émis par le serveur vers les clients du groupe : `CardCreated`, `CardUpdated`, `CardMoved`, `CardDeleted`, `ListCreated`, `ListUpdated`, `ListDeleted`, `CommentAdded`, `CommentUpdated`, `CommentDeleted`, `MemberJoined`, `MemberLeft`, `UserJoined`, `UserLeft`.
 
 ## 3. Swagger / OpenAPI
 
@@ -338,7 +341,7 @@ Un JWT est composé de trois parties séparées par des points : `header.payload
 1. L'utilisateur envoie email + mot de passe à `POST /api/auth/login`
 2. Le backend vérifie le mot de passe avec `BCrypt.Verify`
 3. Si correct : génère un access token (15 min) et un refresh token (64 octets aléatoires, stocké en base)
-4. Le frontend stocke les deux tokens dans le localStorage
+4. Le frontend stocke l'access token dans le sessionStorage et le refresh token dans le localStorage
 
 **Requêtes protégées :**
 1. Le frontend ajoute `Authorization: Bearer <accessToken>` à chaque requête
