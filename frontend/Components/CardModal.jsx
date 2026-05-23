@@ -29,7 +29,7 @@ export default function CardModal({ card, onClose, onUpdate }) {
                 <div className="modal-body">
                     <div className="modal-main">
                         <CardModalDescription description={card.description} onChange={(v) => update("description", v)} />
-                        <CardModalComments comments={card.comments} onChange={(v) => update("comments", v)} />
+                        <CardModalComments cardId={card.id} />
                     </div>
 
                     <aside className="modal-sidebar">
