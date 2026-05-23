@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import yomoLogo from "../src/assets/yomologo.png";
 
-export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGenerateCode, boardMembers, onLeaveBoard, onDeleteBoard }) {
+export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGenerateCode, boardMembers, onLeaveBoard, onDeleteBoard, activeUsers }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(title);
     const [membersOpen, setMembersOpen] = useState(false);
@@ -45,6 +45,17 @@ export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGe
                     >
                         {value}
                     </h1>
+                )}
+
+                {activeUsers?.length > 0 && (
+                    <div className="presence-avatars">
+                        {activeUsers.map((u) => (
+                            <span key={u} className="presence-avatar" title={`${u} est en ligne`}>
+                                {u[0]?.toUpperCase()}
+                                <span className="presence-dot" />
+                            </span>
+                        ))}
+                    </div>
                 )}
             </div>
 
