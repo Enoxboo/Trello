@@ -147,7 +147,7 @@ export default function BoardView() {
             leaveBoard(boardId).catch(() => {});
             disconnectFromHub();
         };
-    }, [board, id]);
+    }, [board?.id, id]);
 
     const currentUser = getCurrentUser();
 
