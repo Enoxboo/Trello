@@ -88,8 +88,9 @@ public class CardService
         if (card == null) return null;
 
         if (dto.Title != null) card.Title = dto.Title;
-        if (dto.Description != null) card.Description = dto.Description;
-        if (dto.DueDate.HasValue) card.DueDate = dto.DueDate;
+        // Description et DueDate peuvent être null pour les effacer
+        card.Description = dto.Description;
+        card.DueDate = dto.DueDate;
 
         await _db.SaveChangesAsync();
 

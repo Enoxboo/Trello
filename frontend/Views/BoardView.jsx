@@ -138,7 +138,8 @@ export default function BoardView() {
         );
     };
 
-    const handleCardUpdate = (updatedCard) => {
+    const handleCardUpdate = async (updatedCard) => {
+        // Mise à jour optimiste locale
         setLists((prev) =>
             prev.map((l) => ({
                 ...l,
@@ -146,6 +147,17 @@ export default function BoardView() {
             }))
         );
         setSelectedCard(updatedCard);
+
+        // Persiste les champs éditables en base
+        try {
+            await updateCard(updatedCard.id, {
+                title: updatedCard.title,
+                description: updatedCard.description,
+                dueDate: updatedCard.dueDate,
+            });
+        } catch (err) {
+            console.error("Erreur sauvegarde carte :", err);
+        }
     };
 
     const handleAddList = async (title) => {
