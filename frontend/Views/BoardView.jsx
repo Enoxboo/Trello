@@ -36,6 +36,7 @@ import {
     onCommentAdded,
     onCommentDeleted,
     onMemberJoined,
+    onMemberLeft,
     disconnectFromHub,
 } from "../Services/signalRService";
 import "../style/board.css";
@@ -182,6 +183,13 @@ export default function BoardView() {
                 if (!prev) return prev;
                 if (prev.members?.some((m) => m.userId === member.userId)) return prev;
                 return { ...prev, members: [...(prev.members ?? []), member] };
+            });
+        });
+
+        onMemberLeft(({ userId: leftUserId }) => {
+            setBoard((prev) => {
+                if (!prev) return prev;
+                return { ...prev, members: (prev.members ?? []).filter((m) => m.userId !== leftUserId) };
             });
         });
 
