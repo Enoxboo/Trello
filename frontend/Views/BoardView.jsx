@@ -112,7 +112,6 @@ export default function BoardView() {
                     cards: l.cards.map((c) => (c.id === updated.id ? updated : c)),
                 }))
             );
-            // Met à jour la modal si elle est ouverte sur cette carte
             setSelectedCard((prev) => (prev?.id === updated.id ? updated : prev));
         });
 
@@ -150,6 +149,13 @@ export default function BoardView() {
     }, [board?.id, id]);
 
     const currentUser = getCurrentUser();
+
+    const boardMembers = board
+        ? [
+            { userId: board.ownerId, username: board.ownerUsername ?? "Owner" },
+            ...(board.members ?? []),
+          ]
+        : [];
 
     const handleRenameBoard = async (newTitle) => {
         await updateBoard(id, newTitle);
@@ -269,6 +275,7 @@ export default function BoardView() {
                 inviteCode={board.inviteCode}
                 isOwner={board.ownerId === currentUser?.id}
                 onGenerateCode={handleGenerateCode}
+                boardMembers={boardMembers}
             />
 
             <div className="board-lists">
