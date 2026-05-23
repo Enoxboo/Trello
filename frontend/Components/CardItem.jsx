@@ -3,8 +3,7 @@ import { Trash2 } from "lucide-react";
 
 export default function CardItem({ card, onClick, onDelete, onDragStart }) {
     const dueDateStatus = getDueDateStatus(card.dueDate);
-    const comments = card.comments ?? [];
-    // L'API retourne members comme [{ userId, username }], on affiche username
+    const commentCount = card.commentCount ?? 0;
     const members = (card.members ?? []).map((m) =>
         typeof m === "string" ? m : m.username
     );
@@ -56,8 +55,8 @@ export default function CardItem({ card, onClick, onDelete, onDragStart }) {
                         {formatDate(card.dueDate)}
                     </span>
                 )}
-                {comments.length > 0 && (
-                    <span className="card-comments">{comments.length}</span>
+                {commentCount > 0 && (
+                    <span className="card-comments">{commentCount}</span>
                 )}
                 {members.length > 0 && (
                     <div className="card-members">

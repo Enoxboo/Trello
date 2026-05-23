@@ -31,6 +31,7 @@ public class CardService
         return await _db.Cards
             .Include(c => c.Labels)
             .Include(c => c.Members).ThenInclude(m => m.User)
+            .Include(c => c.Comments)
             .Where(c => c.ListId == listId)
             .OrderBy(c => c.Position)
             .Select(c => ToDto(c))
@@ -42,6 +43,7 @@ public class CardService
         var card = await _db.Cards
             .Include(c => c.Labels)
             .Include(c => c.Members).ThenInclude(m => m.User)
+            .Include(c => c.Comments)
             .FirstOrDefaultAsync(c => c.Id == cardId &&
                 (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
 
@@ -81,7 +83,8 @@ public class CardService
         var card = await _db.Cards
             .Include(c => c.Labels)
             .Include(c => c.Members).ThenInclude(m => m.User)
-            .Include(c => c.List) // nécessaire pour récupérer le boardId
+            .Include(c => c.Comments)
+            .Include(c => c.List) // pour boardId SignalR
             .FirstOrDefaultAsync(c => c.Id == cardId &&
                 (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
 
@@ -222,6 +225,7 @@ public class CardService
         CreatedAt = c.CreatedAt,
         ListId = c.ListId,
         Labels = c.Labels.Select(l => new LabelDto { Id = l.Id, Name = l.Name, Color = l.Color }).ToList(),
-        Members = c.Members.Select(m => new CardMemberDto { UserId = m.UserId, Username = m.User.Username }).ToList()
+        Members = c.Members.Select(m => new CardMemberDto { UserId = m.UserId, Username = m.User.Username }).ToList(),
+        CommentCount = c.Comments.Count
     };
 }
