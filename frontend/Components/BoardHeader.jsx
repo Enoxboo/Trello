@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import yomoLogo from "../src/assets/yomologo.png";
 
-export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGenerateCode, boardMembers, onLeaveBoard }) {
+export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGenerateCode, boardMembers, onLeaveBoard, onDeleteBoard }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(title);
     const [membersOpen, setMembersOpen] = useState(false);
@@ -114,7 +114,20 @@ export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGe
 
                     {settingsOpen && (
                         <div className="board-invite-panel">
-                            {!isOwner && (
+                            {isOwner ? (
+                                <button
+                                    className="board-action-btn board-action-btn--dark"
+                                    style={{ color: "#e53e3e" }}
+                                    onClick={() => {
+                                        if (window.confirm("Supprimer définitivement ce board et tout son contenu ?")) {
+                                            onDeleteBoard?.();
+                                        }
+                                        setSettingsOpen(false);
+                                    }}
+                                >
+                                    Supprimer le board
+                                </button>
+                            ) : (
                                 <button
                                     className="board-action-btn board-action-btn--dark"
                                     onClick={() => { onLeaveBoard?.(); setSettingsOpen(false); }}

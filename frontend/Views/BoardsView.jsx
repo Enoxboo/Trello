@@ -28,6 +28,7 @@ export default function BoardsView() {
     };
 
     const handleDelete = async (id) => {
+        if (!window.confirm("Supprimer définitivement ce board et tout son contenu ?")) return;
         await deleteBoard(id);
         setBoards((prev) => prev.filter((b) => b.id !== id));
     };
