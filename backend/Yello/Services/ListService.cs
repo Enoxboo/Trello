@@ -1,18 +1,24 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
 using Yello.DTOs.List;
 using Yello.Entities;
+using Yello.Hubs;
 
 namespace Yello.Services;
 
 public class ListService
 {
     private readonly AppDbContext _db;
+    private readonly IHubContext<BoardHub> _hub;
 
-    public ListService(AppDbContext db)
+    public ListService(AppDbContext db, IHubContext<BoardHub> hub)
     {
         _db = db;
+        _hub = hub;
     }
+
+    private static string Group(int boardId) => $"board-{boardId}";
 
     public async Task<List<ListDto>> GetByBoardAsync(int boardId, int userId)
     {
@@ -35,7 +41,6 @@ public class ListService
 
         if (!hasAccess) return null;
 
-        // La nouvelle liste prend la position suivant la dernière
         var maxPosition = await _db.Lists
             .Where(l => l.BoardId == boardId)
             .MaxAsync(l => (int?)l.Position) ?? -1;
@@ -49,7 +54,10 @@ public class ListService
 
         _db.Lists.Add(list);
         await _db.SaveChangesAsync();
-        return ToDto(list);
+
+        var result = ToDto(list);
+        await _hub.Clients.Group(Group(boardId)).SendAsync("ListCreated", result);
+        return result;
     }
 
     public async Task<ListDto?> UpdateAsync(int listId, UpdateListDto dto, int userId)
@@ -63,11 +71,12 @@ public class ListService
 
         list.Title = dto.Title;
         await _db.SaveChangesAsync();
-        return ToDto(list);
+
+        var result = ToDto(list);
+        await _hub.Clients.Group(Group(list.BoardId)).SendAsync("ListUpdated", result);
+        return result;
     }
 
-    // Déplacement d'une liste : recalcule les positions de toutes les listes du board
-    // pour maintenir un ordre cohérent sans trous
     public async Task<bool> MoveAsync(int listId, MoveListDto dto, int userId)
     {
         var list = await _db.Lists
@@ -100,8 +109,12 @@ public class ListService
 
         if (list == null) return false;
 
+        var boardId = list.BoardId;
+
         _db.Lists.Remove(list);
         await _db.SaveChangesAsync();
+
+        await _hub.Clients.Group(Group(boardId)).SendAsync("ListDeleted", new { listId });
         return true;
     }
 

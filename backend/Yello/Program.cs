@@ -61,7 +61,11 @@ builder.Services.AddScoped<ListService>();
 builder.Services.AddScoped<CardService>();
 builder.Services.AddScoped<CommentService>();
 
-builder.Services.AddSignalR();
+// SignalR avec camelCase pour que les DTOs C# arrivent en camelCase côté JS
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+{
+    options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+});
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

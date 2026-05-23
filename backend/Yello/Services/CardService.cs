@@ -1,18 +1,24 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
 using Yello.DTOs.Card;
 using Yello.Entities;
+using Yello.Hubs;
 
 namespace Yello.Services;
 
 public class CardService
 {
     private readonly AppDbContext _db;
+    private readonly IHubContext<BoardHub> _hub;
 
-    public CardService(AppDbContext db)
+    public CardService(AppDbContext db, IHubContext<BoardHub> hub)
     {
         _db = db;
+        _hub = hub;
     }
+
+    private static string Group(int boardId) => $"board-{boardId}";
 
     public async Task<List<CardDto>> GetByListAsync(int listId, int userId)
     {
@@ -64,7 +70,10 @@ public class CardService
 
         _db.Cards.Add(card);
         await _db.SaveChangesAsync();
-        return ToDto(card);
+
+        var result = ToDto(card);
+        await _hub.Clients.Group(Group(list.BoardId)).SendAsync("CardCreated", result);
+        return result;
     }
 
     public async Task<CardDto?> UpdateAsync(int cardId, UpdateCardDto dto, int userId)
@@ -72,6 +81,7 @@ public class CardService
         var card = await _db.Cards
             .Include(c => c.Labels)
             .Include(c => c.Members).ThenInclude(m => m.User)
+            .Include(c => c.List) // nécessaire pour récupérer le boardId
             .FirstOrDefaultAsync(c => c.Id == cardId &&
                 (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
 
@@ -82,10 +92,12 @@ public class CardService
         if (dto.DueDate.HasValue) card.DueDate = dto.DueDate;
 
         await _db.SaveChangesAsync();
-        return ToDto(card);
+
+        var result = ToDto(card);
+        await _hub.Clients.Group(Group(card.List.BoardId)).SendAsync("CardUpdated", result);
+        return result;
     }
 
-    // Déplacement d'une carte : peut changer de liste et/ou de position
     public async Task<bool> MoveAsync(int cardId, MoveCardDto dto, int userId)
     {
         var card = await _db.Cards
@@ -102,6 +114,8 @@ public class CardService
 
         if (targetList == null) return false;
 
+        var boardId = card.List.BoardId;
+
         var siblings = await _db.Cards
             .Where(c => c.ListId == dto.ListId && c.Id != cardId)
             .OrderBy(c => c.Position)
@@ -114,19 +128,29 @@ public class CardService
             siblings[i].Position = i;
 
         await _db.SaveChangesAsync();
+
+        await _hub.Clients.Group(Group(boardId))
+            .SendAsync("CardMoved", new { cardId = card.Id, listId = dto.ListId });
         return true;
     }
 
     public async Task<bool> DeleteAsync(int cardId, int userId)
     {
         var card = await _db.Cards
+            .Include(c => c.List) // pour boardId
             .FirstOrDefaultAsync(c => c.Id == cardId &&
                 (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
 
         if (card == null) return false;
 
+        var boardId = card.List.BoardId;
+        var listId = card.ListId;
+
         _db.Cards.Remove(card);
         await _db.SaveChangesAsync();
+
+        await _hub.Clients.Group(Group(boardId))
+            .SendAsync("CardDeleted", new { cardId, listId });
         return true;
     }
 
