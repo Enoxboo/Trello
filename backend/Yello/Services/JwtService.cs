@@ -5,6 +5,7 @@ using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using Yello.Entities;
 
+
 namespace Yello.Services;
 
 public class JwtService
@@ -56,30 +57,4 @@ public class JwtService
         return Convert.ToBase64String(bytes);
     }
 
-    // Lit et valide un access token expiré pour en extraire l'identité.
-    // Utilisé lors du refresh : on vérifie la signature même si le token est expiré.
-    public ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
-    {
-        var secret = _config["Jwt:Secret"]!;
-
-        var validationParams = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = _config["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = _config["Jwt:Audience"],
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
-            ValidateLifetime = false // on accepte les tokens expirés lors du refresh
-        };
-
-        var handler = new JwtSecurityTokenHandler();
-        var principal = handler.ValidateToken(token, validationParams, out var securityToken);
-
-        if (securityToken is not JwtSecurityToken jwt ||
-            !jwt.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.OrdinalIgnoreCase))
-            return null;
-
-        return principal;
-    }
 }
