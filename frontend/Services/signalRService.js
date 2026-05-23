@@ -50,6 +50,26 @@ export function onCommentAdded(callback) {
     connection?.on("CommentAdded", callback);
 }
 
+export function onCommentUpdated(callback) {
+    connection?.on("CommentUpdated", callback);
+}
+
+export function onCommentDeleted(callback) {
+    connection?.on("CommentDeleted", callback);
+}
+
+export function offCommentAdded(callback) {
+    connection?.off("CommentAdded", callback);
+}
+
+export function offCommentUpdated(callback) {
+    connection?.off("CommentUpdated", callback);
+}
+
+export function offCommentDeleted(callback) {
+    connection?.off("CommentDeleted", callback);
+}
+
 export function onListUpdated(callback) {
     connection?.on("ListUpdated", callback);
 }

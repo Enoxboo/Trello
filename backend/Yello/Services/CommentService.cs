@@ -66,6 +66,8 @@ public class CommentService
     {
         var comment = await _db.Comments
             .Include(c => c.Author)
+            .Include(c => c.Card)
+                .ThenInclude(card => card.List)
             .FirstOrDefaultAsync(c => c.Id == commentId && c.AuthorId == userId);
 
         if (comment == null) return null;
@@ -73,19 +75,31 @@ public class CommentService
         comment.Content = dto.Content;
         comment.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
-        return ToDto(comment);
+
+        var result = ToDto(comment);
+        await _hub.Clients.Group($"board-{comment.Card.List.BoardId}")
+            .SendAsync("CommentUpdated", result);
+        return result;
     }
 
     // Seul l'auteur peut supprimer son commentaire
     public async Task<bool> DeleteAsync(int commentId, int userId)
     {
         var comment = await _db.Comments
+            .Include(c => c.Card)
+                .ThenInclude(card => card.List)
             .FirstOrDefaultAsync(c => c.Id == commentId && c.AuthorId == userId);
 
         if (comment == null) return false;
 
+        int cardId = comment.CardId;
+        int boardId = comment.Card.List.BoardId;
+
         _db.Comments.Remove(comment);
         await _db.SaveChangesAsync();
+
+        await _hub.Clients.Group($"board-{boardId}")
+            .SendAsync("CommentDeleted", new { CommentId = commentId, CardId = cardId });
         return true;
     }
 
@@ -96,6 +110,7 @@ public class CommentService
         CreatedAt = c.CreatedAt,
         UpdatedAt = c.UpdatedAt,
         AuthorId = c.AuthorId,
-        AuthorUsername = c.Author.Username
+        AuthorUsername = c.Author.Username,
+        CardId = c.CardId
     };
 }

@@ -31,6 +31,8 @@ import {
     onListCreated,
     onListUpdated,
     onListDeleted,
+    onCommentAdded,
+    onCommentDeleted,
     disconnectFromHub,
 } from "../Services/signalRService";
 import "../style/board.css";
@@ -140,6 +142,32 @@ export default function BoardView() {
 
         onListDeleted(({ listId }) => {
             setLists((prev) => prev.filter((l) => l.id !== listId));
+        });
+
+        onCommentAdded((comment) => {
+            setLists((prev) =>
+                prev.map((l) => ({
+                    ...l,
+                    cards: l.cards.map((c) =>
+                        c.id === comment.cardId
+                            ? { ...c, commentCount: (c.commentCount ?? 0) + 1 }
+                            : c
+                    ),
+                }))
+            );
+        });
+
+        onCommentDeleted(({ cardId }) => {
+            setLists((prev) =>
+                prev.map((l) => ({
+                    ...l,
+                    cards: l.cards.map((c) =>
+                        c.id === cardId
+                            ? { ...c, commentCount: Math.max(0, (c.commentCount ?? 0) - 1) }
+                            : c
+                    ),
+                }))
+            );
         });
 
         return () => {
@@ -302,18 +330,6 @@ export default function BoardView() {
                     onClose={() => setSelectedCard(null)}
                     onUpdate={handleCardUpdate}
                     boardMembers={boardMembers}
-                    onCommentCountChange={(delta) => {
-                        setLists((prev) =>
-                            prev.map((l) => ({
-                                ...l,
-                                cards: l.cards.map((c) =>
-                                    c.id === selectedCard.id
-                                        ? { ...c, commentCount: (c.commentCount ?? 0) + delta }
-                                        : c
-                                ),
-                            }))
-                        );
-                    }}
                 />
             )}
         </main>

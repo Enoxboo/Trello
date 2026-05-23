@@ -1,24 +1,57 @@
 import { useState, useEffect } from "react";
 import { getCurrentUser } from "../Services/authService";
 import { getComments, addComment, updateComment, deleteComment } from "../Services/cardService";
+import {
+    onCommentAdded,
+    onCommentUpdated,
+    onCommentDeleted,
+    offCommentAdded,
+    offCommentUpdated,
+    offCommentDeleted,
+} from "../Services/signalRService";
 
-export default function CardModalComments({ cardId, onCommentCountChange }) {
+export default function CardModalComments({ cardId }) {
     const [comments, setComments] = useState([]);
     const [value, setValue] = useState("");
     const currentUser = getCurrentUser();
 
-    // Charge les commentaires depuis l'API quand la modal s'ouvre
     useEffect(() => {
         getComments(cardId).then(setComments).catch(() => {});
+    }, [cardId]);
+
+    useEffect(() => {
+        const handleAdded = (comment) => {
+            if (comment.cardId !== cardId) return;
+            setComments((prev) => {
+                if (prev.some((c) => c.id === comment.id)) return prev;
+                return [...prev, comment];
+            });
+        };
+        const handleUpdated = (updated) => {
+            if (updated.cardId !== cardId) return;
+            setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        };
+        const handleDeleted = ({ commentId, cardId: deletedCardId }) => {
+            if (deletedCardId !== cardId) return;
+            setComments((prev) => prev.filter((c) => c.id !== commentId));
+        };
+
+        onCommentAdded(handleAdded);
+        onCommentUpdated(handleUpdated);
+        onCommentDeleted(handleDeleted);
+
+        return () => {
+            offCommentAdded(handleAdded);
+            offCommentUpdated(handleUpdated);
+            offCommentDeleted(handleDeleted);
+        };
     }, [cardId]);
 
     const handleAdd = async () => {
         if (!value.trim()) return;
         try {
-            const created = await addComment(cardId, value.trim());
-            setComments((prev) => [...prev, created]);
+            await addComment(cardId, value.trim());
             setValue("");
-            onCommentCountChange?.(+1);
         } catch (err) {
             console.error("Erreur ajout commentaire :", err);
         }
@@ -27,8 +60,6 @@ export default function CardModalComments({ cardId, onCommentCountChange }) {
     const handleDelete = async (id) => {
         try {
             await deleteComment(id);
-            setComments((prev) => prev.filter((c) => c.id !== id));
-            onCommentCountChange?.(-1);
         } catch (err) {
             console.error("Erreur suppression commentaire :", err);
         }
@@ -36,8 +67,7 @@ export default function CardModalComments({ cardId, onCommentCountChange }) {
 
     const handleEdit = async (id, newContent) => {
         try {
-            const updated = await updateComment(id, newContent);
-            setComments((prev) => prev.map((c) => (c.id === id ? updated : c)));
+            await updateComment(id, newContent);
         } catch (err) {
             console.error("Erreur modification commentaire :", err);
         }
@@ -85,6 +115,10 @@ export default function CardModalComments({ cardId, onCommentCountChange }) {
 function CommentItem({ comment, isOwner, onDelete, onEdit }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(comment.content);
+
+    useEffect(() => {
+        setValue(comment.content);
+    }, [comment.content]);
 
     const handleSave = () => {
         if (value.trim()) {
