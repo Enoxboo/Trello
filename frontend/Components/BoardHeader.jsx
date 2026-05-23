@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import yomoLogo from "../src/assets/yomologo.png";
 
-export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGenerateCode, boardMembers }) {
+export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGenerateCode, boardMembers, onLeaveBoard }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(title);
     const [membersOpen, setMembersOpen] = useState(false);
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const handleBlur = () => {
@@ -103,7 +104,27 @@ export default function BoardHeader({ title, onRename, inviteCode, isOwner, onGe
                     )}
                 </div>
 
-                <button className="board-action-btn">Paramètres</button>
+                <div style={{ position: "relative" }}>
+                    <button
+                        className="board-action-btn"
+                        onClick={() => { setSettingsOpen(!settingsOpen); setMembersOpen(false); }}
+                    >
+                        Paramètres
+                    </button>
+
+                    {settingsOpen && (
+                        <div className="board-invite-panel">
+                            {!isOwner && (
+                                <button
+                                    className="board-action-btn board-action-btn--dark"
+                                    onClick={() => { onLeaveBoard?.(); setSettingsOpen(false); }}
+                                >
+                                    Quitter le board
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     );

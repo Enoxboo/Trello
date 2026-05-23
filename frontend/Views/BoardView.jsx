@@ -12,6 +12,7 @@ import {
     updateList,
     deleteList,
     generateInviteCode,
+    leaveBoard as leaveBoardHttp,
 } from "../Services/boardService";
 import { getCurrentUser } from "../Services/authService";
 import {
@@ -199,6 +200,11 @@ export default function BoardView() {
         setBoard((prev) => ({ ...prev, inviteCode: code }));
     };
 
+    const handleLeaveBoard = async () => {
+        await leaveBoardHttp(id);
+        navigate("/boards");
+    };
+
     const handleRenameList = async (listId, newTitle) => {
         await updateList(listId, newTitle);
         setLists((prev) =>
@@ -311,6 +317,7 @@ export default function BoardView() {
                 isOwner={board.ownerId === currentUser?.id}
                 onGenerateCode={handleGenerateCode}
                 boardMembers={boardMembers}
+                onLeaveBoard={handleLeaveBoard}
             />
 
             <div className="board-lists">

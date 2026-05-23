@@ -54,3 +54,18 @@ export async function moveList(listId, position) {
 export async function deleteList(listId) {
     return apiFetch(`/api/lists/${listId}`, { method: "DELETE" });
 }
+
+export async function generateInviteCode(boardId) {
+    return apiFetch(`/api/boards/${boardId}/invite-code`, { method: "POST" });
+}
+
+export async function leaveBoard(id) {
+    return apiFetch(`/api/boards/${id}/leave`, { method: "POST" });
+}
+
+export async function joinByCode(code) {
+    return apiFetch("/api/boards/join", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+    });
+}
