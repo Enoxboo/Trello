@@ -283,6 +283,18 @@ export default function BoardView() {
                     card={selectedCard}
                     onClose={() => setSelectedCard(null)}
                     onUpdate={handleCardUpdate}
+                    onCommentCountChange={(delta) => {
+                        setLists((prev) =>
+                            prev.map((l) => ({
+                                ...l,
+                                cards: l.cards.map((c) =>
+                                    c.id === selectedCard.id
+                                        ? { ...c, commentCount: (c.commentCount ?? 0) + delta }
+                                        : c
+                                ),
+                            }))
+                        );
+                    }}
                 />
             )}
         </main>
