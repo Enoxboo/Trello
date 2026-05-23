@@ -1,17 +1,21 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
 using Yello.DTOs.Comment;
 using Yello.Entities;
+using Yello.Hubs;
 
 namespace Yello.Services;
 
 public class CommentService
 {
     private readonly AppDbContext _db;
+    private readonly IHubContext<BoardHub> _hub;
 
-    public CommentService(AppDbContext db)
+    public CommentService(AppDbContext db, IHubContext<BoardHub> hub)
     {
         _db = db;
+        _hub = hub;
     }
 
     public async Task<List<CommentDto>> GetByCardAsync(int cardId, int userId)
@@ -31,10 +35,13 @@ public class CommentService
 
     public async Task<CommentDto?> CreateAsync(int cardId, CreateCommentDto dto, int userId)
     {
-        var hasAccess = await _db.Cards.AnyAsync(c => c.Id == cardId &&
-            (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
+        // On charge la carte avec sa liste pour avoir le boardId pour SignalR
+        var card = await _db.Cards
+            .Include(c => c.List)
+            .FirstOrDefaultAsync(c => c.Id == cardId &&
+                (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
 
-        if (!hasAccess) return null;
+        if (card == null) return null;
 
         var comment = new Comment
         {
@@ -47,7 +54,11 @@ public class CommentService
         await _db.SaveChangesAsync();
 
         await _db.Entry(comment).Reference(c => c.Author).LoadAsync();
-        return ToDto(comment);
+
+        var result = ToDto(comment);
+        await _hub.Clients.Group($"board-{card.List.BoardId}")
+            .SendAsync("CommentAdded", result);
+        return result;
     }
 
     // Seul l'auteur peut modifier son commentaire
