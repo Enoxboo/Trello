@@ -78,6 +78,10 @@ export function onUserJoined(callback) {
     connection?.on("UserJoined", callback);
 }
 
+export function onMemberJoined(callback) {
+    connection?.on("MemberJoined", callback);
+}
+
 export function onUserLeft(callback) {
     connection?.on("UserLeft", callback);
 }
