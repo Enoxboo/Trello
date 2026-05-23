@@ -1,17 +1,21 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
 using Yello.DTOs.Board;
 using Yello.Entities;
+using Yello.Hubs;
 
 namespace Yello.Services;
 
 public class BoardService
 {
     private readonly AppDbContext _db;
+    private readonly IHubContext<BoardHub> _hub;
 
-    public BoardService(AppDbContext db)
+    public BoardService(AppDbContext db, IHubContext<BoardHub> hub)
     {
         _db = db;
+        _hub = hub;
     }
 
     public async Task<List<BoardDto>> GetUserBoardsAsync(int userId)
@@ -90,6 +94,7 @@ public class BoardService
     {
         var board = await _db.Boards
             .Include(b => b.Members)
+                .ThenInclude(m => m.User)
             .FirstOrDefaultAsync(b => b.InviteCode == code);
         if (board == null) return null;
 
@@ -97,6 +102,10 @@ public class BoardService
         {
             board.Members.Add(new BoardMember { BoardId = board.Id, UserId = userId });
             await _db.SaveChangesAsync();
+
+            var user = await _db.Users.FindAsync(userId);
+            await _hub.Clients.Group($"board-{board.Id}")
+                .SendAsync("MemberJoined", new BoardMemberDto { UserId = userId, Username = user?.Username ?? "" });
         }
 
         return ToDto(board);
