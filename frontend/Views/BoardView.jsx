@@ -222,11 +222,14 @@ export default function BoardView() {
         setSelectedCard(updatedCard);
 
         // Persiste les champs éditables en base
+        // dueDate est converti en ISO UTC pour que Npgsql (timestamptz) l'accepte
         try {
             await updateCard(updatedCard.id, {
                 title: updatedCard.title,
                 description: updatedCard.description,
-                dueDate: updatedCard.dueDate,
+                dueDate: updatedCard.dueDate
+                    ? new Date(updatedCard.dueDate).toISOString()
+                    : null,
             });
         } catch (err) {
             console.error("Erreur sauvegarde carte :", err);
