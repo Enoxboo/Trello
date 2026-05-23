@@ -8,6 +8,7 @@ public class CommentDto
     public DateTime? UpdatedAt { get; set; }
     public int AuthorId { get; set; }
     public string AuthorUsername { get; set; } = string.Empty;
+    public int CardId { get; set; }
 }
 
 public class CreateCommentDto
