@@ -6,20 +6,20 @@ const BASE_URL = "http://localhost:5245";
 
 function getTokens() {
     return {
-        access: localStorage.getItem("accessToken"),
+        access: sessionStorage.getItem("accessToken"),
         refresh: localStorage.getItem("refreshToken"),
     };
 }
 
 function saveTokens(accessToken, refreshToken) {
-    localStorage.setItem("accessToken", accessToken);
+    sessionStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
 }
 
 function clearTokens() {
-    localStorage.removeItem("accessToken");
+    sessionStorage.removeItem("accessToken");
+    sessionStorage.removeItem("user");
     localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
 }
 
 async function refreshAccessToken() {

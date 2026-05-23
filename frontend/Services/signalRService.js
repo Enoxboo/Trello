@@ -15,7 +15,7 @@ export async function connectToHub() {
     // sinon le token est figé à la connexion et devient invalide après refresh
     connection = new signalR.HubConnectionBuilder()
         .withUrl("http://localhost:5245/hubs/board", {
-            accessTokenFactory: () => localStorage.getItem("accessToken"),
+            accessTokenFactory: () => sessionStorage.getItem("accessToken"),
         })
         .withAutomaticReconnect()
         .build();

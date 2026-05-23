@@ -13,7 +13,7 @@ export async function loginService(loginData) {
     if (!res.ok) throw new Error(data.message || "Erreur de connexion");
 
     saveTokens(data.accessToken, data.refreshToken);
-    localStorage.setItem("user", JSON.stringify({
+    sessionStorage.setItem("user", JSON.stringify({
         id: data.userId,
         username: data.username,
         email: data.email,
@@ -33,7 +33,7 @@ export async function registerService(registerData) {
     if (!res.ok) throw new Error(data.message || "Erreur lors de l'inscription");
 
     saveTokens(data.accessToken, data.refreshToken);
-    localStorage.setItem("user", JSON.stringify({
+    sessionStorage.setItem("user", JSON.stringify({
         id: data.userId,
         username: data.username,
         email: data.email,
@@ -47,10 +47,10 @@ export function logoutService() {
 }
 
 export function getCurrentUser() {
-    const raw = localStorage.getItem("user");
+    const raw = sessionStorage.getItem("user");
     return raw ? JSON.parse(raw) : null;
 }
 
 export function isAuthenticated() {
-    return !!localStorage.getItem("accessToken");
+    return !!sessionStorage.getItem("accessToken");
 }
