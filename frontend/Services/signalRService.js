@@ -82,6 +82,10 @@ export function onMemberJoined(callback) {
     connection?.on("MemberJoined", callback);
 }
 
+export function onMemberLeft(callback) {
+    connection?.on("MemberLeft", callback);
+}
+
 export function onUserLeft(callback) {
     connection?.on("UserLeft", callback);
 }

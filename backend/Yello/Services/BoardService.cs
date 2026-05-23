@@ -87,6 +87,10 @@ public class BoardService
 
         _db.BoardMembers.Remove(member);
         await _db.SaveChangesAsync();
+
+        await _hub.Clients.Group($"board-{boardId}")
+            .SendAsync("MemberLeft", new { userId });
+
         return true;
     }
 
