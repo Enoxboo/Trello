@@ -60,7 +60,10 @@ export default function BoardView() {
                 const listsWithCards = await Promise.all(
                     listsData.map(async (list) => ({
                         ...list,
-                        cards: await getCardsByList(list.id),
+                        cards: (await getCardsByList(list.id)).map((c) => ({
+                            ...c,
+                            dueDate: c.dueDate?.substring(0, 10) ?? null,
+                        })),
                     }))
                 );
                 setLists(listsWithCards);
@@ -108,13 +111,14 @@ export default function BoardView() {
         });
 
         onCardUpdated((updated) => {
+            const normalized = { ...updated, dueDate: updated.dueDate?.substring(0, 10) ?? null };
             setLists((prev) =>
                 prev.map((l) => ({
                     ...l,
-                    cards: l.cards.map((c) => (c.id === updated.id ? updated : c)),
+                    cards: l.cards.map((c) => (c.id === normalized.id ? normalized : c)),
                 }))
             );
-            setSelectedCard((prev) => (prev?.id === updated.id ? updated : prev));
+            setSelectedCard((prev) => (prev?.id === normalized.id ? normalized : prev));
         });
 
         onCardDeleted(({ cardId: deletedId, listId }) => {
