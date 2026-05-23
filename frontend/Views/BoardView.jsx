@@ -7,6 +7,7 @@ import AddListButton from "../Components/AddListButton";
 import {
     getBoardById,
     updateBoard,
+    deleteBoard,
     getListsByBoard,
     createList,
     updateList,
@@ -205,6 +206,11 @@ export default function BoardView() {
         navigate("/boards");
     };
 
+    const handleDeleteBoard = async () => {
+        await deleteBoard(id);
+        navigate("/boards");
+    };
+
     const handleRenameList = async (listId, newTitle) => {
         await updateList(listId, newTitle);
         setLists((prev) =>
@@ -318,6 +324,7 @@ export default function BoardView() {
                 onGenerateCode={handleGenerateCode}
                 boardMembers={boardMembers}
                 onLeaveBoard={handleLeaveBoard}
+                onDeleteBoard={handleDeleteBoard}
             />
 
             <div className="board-lists">
