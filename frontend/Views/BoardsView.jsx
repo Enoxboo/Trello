@@ -6,6 +6,7 @@ import { logoutService, getCurrentUser } from "../Services/authService";
 export default function BoardsView() {
     const [boards, setBoards] = useState([]);
     const [newTitle, setNewTitle] = useState("");
+    const [nameError, setNameError] = useState("");
     const [joinCode, setJoinCode] = useState("");
     const [joinError, setJoinError] = useState("");
     const [loading, setLoading] = useState(true);
@@ -21,7 +22,11 @@ export default function BoardsView() {
 
     const handleCreate = async (e) => {
         e.preventDefault();
-        if (!newTitle.trim()) return;
+        if (!newTitle.trim()) {
+            setNameError("Le nom du board est requis.");
+            return;
+        }
+        setNameError("");
         const board = await createBoard(newTitle.trim());
         setBoards((prev) => [...prev, board]);
         setNewTitle("");
@@ -65,16 +70,26 @@ export default function BoardsView() {
                 <button onClick={handleLogout} style={{ cursor: "pointer" }}>Déconnexion</button>
             </header>
 
-            <form onSubmit={handleCreate} style={{ display: "flex", gap: "0.5rem", marginBottom: "2rem" }}>
-                <input
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Nom du nouveau tableau"
-                    style={{ flex: 1, padding: "0.5rem", borderRadius: "4px", border: "1px solid #ccc" }}
-                />
-                <button type="submit" style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>
-                    Créer
-                </button>
+            <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginBottom: "2rem" }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <input
+                        value={newTitle}
+                        onChange={(e) => { setNewTitle(e.target.value); if (nameError) setNameError(""); }}
+                        placeholder="Nom du nouveau tableau"
+                        style={{
+                            flex: 1,
+                            padding: "0.5rem",
+                            borderRadius: "4px",
+                            border: nameError ? "1px solid #c0392b" : "1px solid #ccc",
+                        }}
+                    />
+                    <button type="submit" style={{ padding: "0.5rem 1rem", cursor: "pointer" }}>
+                        Créer
+                    </button>
+                </div>
+                {nameError && (
+                    <p style={{ color: "#c0392b", margin: 0, fontSize: "13px" }}>{nameError}</p>
+                )}
             </form>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1rem" }}>
