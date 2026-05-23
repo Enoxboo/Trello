@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { getCurrentUser } from "../Services/authService";
 import { getComments, addComment, updateComment, deleteComment } from "../Services/cardService";
 
-export default function CardModalComments({ cardId }) {
+export default function CardModalComments({ cardId, onCommentCountChange }) {
     const [comments, setComments] = useState([]);
     const [value, setValue] = useState("");
     const currentUser = getCurrentUser();
@@ -18,6 +18,7 @@ export default function CardModalComments({ cardId }) {
             const created = await addComment(cardId, value.trim());
             setComments((prev) => [...prev, created]);
             setValue("");
+            onCommentCountChange?.(+1);
         } catch (err) {
             console.error("Erreur ajout commentaire :", err);
         }
@@ -27,6 +28,7 @@ export default function CardModalComments({ cardId }) {
         try {
             await deleteComment(id);
             setComments((prev) => prev.filter((c) => c.id !== id));
+            onCommentCountChange?.(-1);
         } catch (err) {
             console.error("Erreur suppression commentaire :", err);
         }
