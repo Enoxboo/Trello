@@ -11,6 +11,7 @@ public class CardDto
     public int ListId { get; set; }
     public List<LabelDto> Labels { get; set; } = [];
     public List<CardMemberDto> Members { get; set; } = [];
+    public int CommentCount { get; set; }
 }
 
 public class LabelDto
