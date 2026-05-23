@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import yomoLogo from "../src/assets/yomologo.png";
 
 export default function BoardHeader({ title, onRename }) {
@@ -14,7 +15,9 @@ export default function BoardHeader({ title, onRename }) {
     return (
         <header className="board-header">
             <div className="board-header-left">
-                <img src={yomoLogo} alt="Logo Yomo" className="board-logo" />
+                <Link to="/boards" style={{ lineHeight: 0 }}>
+                    <img src={yomoLogo} alt="Logo Yomo" className="board-logo" />
+                </Link>
 
                 {editing ? (
                     <input
