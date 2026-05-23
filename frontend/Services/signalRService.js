@@ -9,13 +9,13 @@ let connection = null;
 export async function connectToHub() {
     if (connection) return connection;
 
-    const token = localStorage.getItem("accessToken");
-
     // Pour les WebSockets, le token ne peut pas être envoyé en header HTTP standard.
     // SignalR le transmet via la query string ?access_token=... lors du handshake.
+    // accessTokenFactory doit être une fonction, pas une valeur capturée,
+    // sinon le token est figé à la connexion et devient invalide après refresh
     connection = new signalR.HubConnectionBuilder()
         .withUrl("http://localhost:5245/hubs/board", {
-            accessTokenFactory: () => token,
+            accessTokenFactory: () => localStorage.getItem("accessToken"),
         })
         .withAutomaticReconnect()
         .build();
@@ -60,6 +60,18 @@ export function onUserJoined(callback) {
 
 export function onUserLeft(callback) {
     connection?.on("UserLeft", callback);
+}
+
+export function onCardDeleted(callback) {
+    connection?.on("CardDeleted", callback);
+}
+
+export function onListCreated(callback) {
+    connection?.on("ListCreated", callback);
+}
+
+export function onListDeleted(callback) {
+    connection?.on("ListDeleted", callback);
 }
 
 export async function disconnectFromHub() {
