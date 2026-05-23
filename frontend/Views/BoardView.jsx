@@ -11,7 +11,9 @@ import {
     createList,
     updateList,
     deleteList,
+    generateInviteCode,
 } from "../Services/boardService";
+import { getCurrentUser } from "../Services/authService";
 import {
     getCardsByList,
     createCard,
@@ -147,9 +149,16 @@ export default function BoardView() {
         };
     }, [board, id]);
 
+    const currentUser = getCurrentUser();
+
     const handleRenameBoard = async (newTitle) => {
         await updateBoard(id, newTitle);
         setBoard((prev) => ({ ...prev, title: newTitle }));
+    };
+
+    const handleGenerateCode = async () => {
+        const { code } = await generateInviteCode(id);
+        setBoard((prev) => ({ ...prev, inviteCode: code }));
     };
 
     const handleRenameList = async (listId, newTitle) => {
@@ -160,12 +169,8 @@ export default function BoardView() {
     };
 
     const handleAddCard = async (listId, cardTitle) => {
-        const newCard = await createCard(listId, cardTitle);
-        setLists((prev) =>
-            prev.map((l) =>
-                l.id === listId ? { ...l, cards: [...l.cards, newCard] } : l
-            )
-        );
+        await createCard(listId, cardTitle);
+        // L'état est mis à jour via l'event SignalR CardCreated (même pour le créateur)
     };
 
     const handleCardUpdate = async (updatedCard) => {
@@ -191,8 +196,8 @@ export default function BoardView() {
     };
 
     const handleAddList = async (title) => {
-        const newList = await createList(id, title);
-        setLists((prev) => [...prev, { ...newList, cards: [] }]);
+        await createList(id, title);
+        // L'état est mis à jour via l'event SignalR ListCreated (même pour le créateur)
     };
 
     const handleDeleteList = async (listId) => {
@@ -258,7 +263,13 @@ export default function BoardView() {
 
     return (
         <main className="board-page" aria-label="Vue du tableau">
-            <BoardHeader title={board.title} onRename={handleRenameBoard} />
+            <BoardHeader
+                title={board.title}
+                onRename={handleRenameBoard}
+                inviteCode={board.inviteCode}
+                isOwner={board.ownerId === currentUser?.id}
+                onGenerateCode={handleGenerateCode}
+            />
 
             <div className="board-lists">
                 {lists.map((list) => (
