@@ -72,6 +72,20 @@ public class BoardService
         return board.InviteCode;
     }
 
+    public async Task<bool> LeaveAsync(int boardId, int userId)
+    {
+        var isOwner = await _db.Boards.AnyAsync(b => b.Id == boardId && b.OwnerId == userId);
+        if (isOwner) return false;
+
+        var member = await _db.BoardMembers
+            .FirstOrDefaultAsync(m => m.BoardId == boardId && m.UserId == userId);
+        if (member == null) return false;
+
+        _db.BoardMembers.Remove(member);
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<BoardDto?> JoinByCodeAsync(string code, int userId)
     {
         var board = await _db.Boards
