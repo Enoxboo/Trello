@@ -75,8 +75,9 @@ export function onListDeleted(callback) {
 }
 
 export async function disconnectFromHub() {
-    if (connection) {
-        await connection.stop();
-        connection = null;
+    const conn = connection;
+    connection = null; // libère immédiatement la référence avant l'arrêt async
+    if (conn) {
+        await conn.stop();
     }
 }
