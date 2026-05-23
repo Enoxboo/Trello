@@ -10,7 +10,7 @@ import "../style/card-modal.css";
 // Composant de modal pour afficher et éditer les détails d'une carte
 // Il gère les champs principaux : titre, description, membres, labels, date d'échéance et commentaires
 // La modal se ferme en cliquant en dehors ou en appuyant sur Échap
-export default function CardModal({ card, onClose, onUpdate, onCommentCountChange }) {
+export default function CardModal({ card, onClose, onUpdate, onCommentCountChange, boardMembers }) {
     const update = (field, value) => onUpdate({ ...card, [field]: value });
 
     useEffect(() => {
@@ -33,7 +33,7 @@ export default function CardModal({ card, onClose, onUpdate, onCommentCountChang
                     </div>
 
                     <aside className="modal-sidebar">
-                        <CardModalMembers cardId={card.id} members={card.members} onChange={(v) => update("members", v)} />
+                        <CardModalMembers cardId={card.id} members={card.members} boardMembers={boardMembers} onChange={(v) => update("members", v)} />
                         <CardModalLabels cardId={card.id} labels={card.labels} onChange={(v) => update("labels", v)} />
                         <CardModalDueDate dueDate={card.dueDate} onChange={(v) => update("dueDate", v)} />
                     </aside>
