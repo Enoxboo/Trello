@@ -37,6 +37,8 @@ import {
     onCommentDeleted,
     onMemberJoined,
     onMemberLeft,
+    onUserJoined,
+    onUserLeft,
     disconnectFromHub,
 } from "../Services/signalRService";
 import "../style/board.css";
@@ -48,6 +50,7 @@ export default function BoardView() {
     const [lists, setLists] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [activeUsers, setActiveUsers] = useState([]);
     const dragRef = useRef({ cardId: null, sourceListId: null });
 
     // Charge le board et toutes ses listes avec leurs cartes au montage du composant
@@ -87,7 +90,10 @@ export default function BoardView() {
         if (!board) return;
         const boardId = parseInt(id, 10);
 
-        joinBoard(boardId).catch(() => {});
+        const me = getCurrentUser();
+        joinBoard(boardId)
+            .then(() => setActiveUsers(me ? [me.username] : []))
+            .catch(() => {});
 
         // Déduplication : on vérifie si la carte/liste existe déjà avant d'ajouter
         // (le client créateur a déjà mis à jour son état local)
@@ -105,12 +111,13 @@ export default function BoardView() {
             setLists((prev) => {
                 const card = prev.flatMap((l) => l.cards).find((c) => c.id === move.cardId);
                 if (!card) return prev;
-                return prev.map((l) => ({
-                    ...l,
-                    cards: l.id === move.listId
-                        ? [...l.cards.filter((c) => c.id !== move.cardId), { ...card, listId: move.listId }]
-                        : l.cards.filter((c) => c.id !== move.cardId),
-                }));
+                return prev.map((l) => {
+                    const withoutCard = l.cards.filter((c) => c.id !== move.cardId);
+                    if (l.id !== move.listId) return { ...l, cards: withoutCard };
+                    const arr = [...withoutCard];
+                    arr.splice(Math.min(move.position, arr.length), 0, { ...card, listId: move.listId });
+                    return { ...l, cards: arr };
+                });
             });
         });
 
@@ -176,6 +183,14 @@ export default function BoardView() {
                     ),
                 }))
             );
+        });
+
+        onUserJoined(({ username }) => {
+            setActiveUsers((prev) => prev.includes(username) ? prev : [...prev, username]);
+        });
+
+        onUserLeft(({ username }) => {
+            setActiveUsers((prev) => prev.filter((u) => u !== username));
         });
 
         onMemberJoined((member) => {
@@ -284,16 +299,24 @@ export default function BoardView() {
 
     // Mise à jour optimiste : on déplace la carte dans l'état local immédiatement,
     // puis on persiste en base. En cas d'erreur, on restaure l'état précédent.
-    const handleDrop = async (e, targetListId) => {
+    const handleDrop = async (e, targetListId, dropIndex) => {
         const cardId = parseInt(e.dataTransfer.getData("cardId"), 10);
         if (!cardId) return;
 
         const snapshot = lists;
 
+        // Compute insertion position for the backend (siblings array excludes the moved card)
+        const sourceList = lists.find((l) => l.cards.some((c) => c.id === cardId));
+        const sourceCardIndex = sourceList?.cards.findIndex((c) => c.id === cardId) ?? -1;
+        const isSameList = sourceList?.id === targetListId;
+        const targetWithoutMoved = (lists.find((l) => l.id === targetListId)?.cards ?? []).filter((c) => c.id !== cardId);
+        const rawPos = dropIndex ?? targetWithoutMoved.length;
+        const apiPosition = isSameList && dropIndex != null && dropIndex > sourceCardIndex
+            ? rawPos - 1
+            : rawPos;
+
         setLists((prev) => {
-            const card = prev
-                .flatMap((l) => l.cards)
-                .find((c) => c.id === cardId);
+            const card = prev.flatMap((l) => l.cards).find((c) => c.id === cardId);
             if (!card) return prev;
 
             const withoutCard = prev.map((l) => ({
@@ -301,17 +324,16 @@ export default function BoardView() {
                 cards: l.cards.filter((c) => c.id !== cardId),
             }));
 
-            return withoutCard.map((l) =>
-                l.id === targetListId
-                    ? { ...l, cards: [...l.cards, { ...card, listId: targetListId }] }
-                    : l
-            );
+            return withoutCard.map((l) => {
+                if (l.id !== targetListId) return l;
+                const arr = [...l.cards];
+                arr.splice(Math.min(apiPosition, arr.length), 0, { ...card, listId: targetListId });
+                return { ...l, cards: arr };
+            });
         });
 
         try {
-            const targetList = lists.find((l) => l.id === targetListId);
-            const newPosition = targetList ? targetList.cards.length : 0;
-            await moveCard(cardId, targetListId, newPosition);
+            await moveCard(cardId, targetListId, apiPosition);
         } catch {
             setLists(snapshot);
         }
@@ -342,6 +364,7 @@ export default function BoardView() {
                 boardMembers={boardMembers}
                 onLeaveBoard={handleLeaveBoard}
                 onDeleteBoard={handleDeleteBoard}
+                activeUsers={activeUsers}
             />
 
             <div className="board-lists">
