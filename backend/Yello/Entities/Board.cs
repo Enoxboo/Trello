@@ -10,6 +10,8 @@ public class Board
     public int OwnerId { get; set; }
     public User Owner { get; set; } = null!;
 
+    public string? InviteCode { get; set; }
+
     public ICollection<BoardList> Lists { get; set; } = [];
     public ICollection<BoardMember> Members { get; set; } = [];
 }

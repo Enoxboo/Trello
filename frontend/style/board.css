@@ -578,6 +578,40 @@
         border-radius: 4px;
     }
 }
+.board-invite-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    min-width: 220px;
+    z-index: 100;
+    color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.board-invite-code {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: #805e73;
+    font-family: monospace;
+}
+
+.board-action-btn--dark {
+    background: rgba(61, 32, 53, 0.15);
+    border-color: rgba(61, 32, 53, 0.3);
+    color: #3d2035;
+}
+
+.board-action-btn--dark:hover {
+    background: rgba(61, 32, 53, 0.25);
+}
+
 /* Indicateur visuel lors du drag & drop d'une carte sur une liste */
 .list-column--drag-over {
     outline: 2px dashed #0052cc;
