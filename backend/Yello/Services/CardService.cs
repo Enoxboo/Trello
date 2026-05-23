@@ -134,7 +134,7 @@ public class CardService
         await _db.SaveChangesAsync();
 
         await _hub.Clients.Group(Group(boardId))
-            .SendAsync("CardMoved", new { cardId = card.Id, listId = dto.ListId });
+            .SendAsync("CardMoved", new { cardId = card.Id, listId = dto.ListId, position = card.Position });
         return true;
     }
 

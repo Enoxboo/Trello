@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import CardItem from "./CardItem";
 import AddCardButton from "./AddCardButton";
 import { Trash2 } from "lucide-react";
@@ -18,6 +18,7 @@ export default function ListColumn({
     const [title, setTitle] = useState(list.title);
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [isDragOver, setIsDragOver] = useState(false);
+    const [dropIndex, setDropIndex] = useState(null);
 
     const handleBlur = () => {
         setEditing(false);
@@ -25,22 +26,42 @@ export default function ListColumn({
         else setTitle(list.title);
     };
 
-    // Passe juste le titre à la vue parent qui appellera l'API
     const handleAddCard = (cardTitle) => {
         onAddCard(list.id, cardTitle);
     };
 
+    // Per-card handler: determines upper/lower half to compute insert index
+    const handleCardDragOver = (e, cardIndex) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+        const rect = e.currentTarget.getBoundingClientRect();
+        setDropIndex(e.clientY < rect.top + rect.height / 2 ? cardIndex : cardIndex + 1);
+    };
+
+    // Fallback: hovering over list background → append to end
     const handleDragOver = (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
         setIsDragOver(true);
+        setDropIndex(list.cards.length);
         onDragOver(e, list.id);
+    };
+
+    const handleDragLeave = (e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            setIsDragOver(false);
+            setDropIndex(null);
+        }
     };
 
     const handleDrop = (e) => {
         e.preventDefault();
+        const idx = dropIndex;
         setIsDragOver(false);
-        onDrop(e, list.id);
+        setDropIndex(null);
+        onDrop(e, list.id, idx);
     };
 
     return (
@@ -48,7 +69,7 @@ export default function ListColumn({
             className={`list-column${isDragOver ? " list-column--drag-over" : ""}`}
             aria-label={`Liste : ${list.title}`}
             onDragOver={handleDragOver}
-            onDragLeave={() => setIsDragOver(false)}
+            onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
             <div className="list-header">
@@ -92,15 +113,23 @@ export default function ListColumn({
             </div>
 
             <div className="list-cards">
-                {list.cards.map((card) => (
-                    <CardItem
-                        key={card.id}
-                        card={card}
-                        onClick={onCardClick}
-                        onDelete={(cardId) => onDeleteCard(list.id, cardId)}
-                        onDragStart={onDragStart}
-                    />
+                {list.cards.map((card, index) => (
+                    <Fragment key={card.id}>
+                        {isDragOver && dropIndex === index && (
+                            <div className="card-drop-indicator" />
+                        )}
+                        <CardItem
+                            card={card}
+                            onClick={onCardClick}
+                            onDelete={(cardId) => onDeleteCard(list.id, cardId)}
+                            onDragStart={onDragStart}
+                            onCardDragOver={(e) => handleCardDragOver(e, index)}
+                        />
+                    </Fragment>
                 ))}
+                {isDragOver && dropIndex === list.cards.length && (
+                    <div className="card-drop-indicator" />
+                )}
             </div>
 
             <AddCardButton onAdd={handleAddCard} />

@@ -1,7 +1,7 @@
 import { getDueDateStatus, formatDate } from "../src/utils/dateUtils";
 import { Trash2 } from "lucide-react";
 
-export default function CardItem({ card, onClick, onDelete, onDragStart }) {
+export default function CardItem({ card, onClick, onDelete, onDragStart, onCardDragOver }) {
     const dueDateStatus = getDueDateStatus(card.dueDate);
     const commentCount = card.commentCount ?? 0;
     const members = (card.members ?? []).map((m) =>
@@ -22,6 +22,7 @@ export default function CardItem({ card, onClick, onDelete, onDragStart }) {
                 e.dataTransfer.effectAllowed = "move";
                 onDragStart(e, card.id);
             }}
+            onDragOver={onCardDragOver}
         >
             {card.labels && card.labels.length > 0 && (
                 <div className="card-labels">

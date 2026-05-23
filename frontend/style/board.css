@@ -626,3 +626,46 @@
     cursor: grabbing;
     opacity: 0.6;
 }
+
+/* Drop position indicator for intra-list card reordering */
+.card-drop-indicator {
+    height: 3px;
+    background: #0052cc;
+    border-radius: 2px;
+    margin: 2px 0;
+}
+
+/* Presence avatars shown in the board header */
+.presence-avatars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+.presence-avatar {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    cursor: default;
+}
+
+.presence-dot {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    background: #22c55e;
+    border-radius: 50%;
+    border: 2px solid #805e73;
+}
