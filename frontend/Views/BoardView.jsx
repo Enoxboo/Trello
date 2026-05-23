@@ -25,7 +25,10 @@ import {
     onCardCreated,
     onCardMoved,
     onCardUpdated,
+    onCardDeleted,
+    onListCreated,
     onListUpdated,
+    onListDeleted,
     disconnectFromHub,
 } from "../Services/signalRService";
 import "../style/board.css";
@@ -75,11 +78,15 @@ export default function BoardView() {
 
         joinBoard(boardId).catch(() => {});
 
+        // Déduplication : on vérifie si la carte/liste existe déjà avant d'ajouter
+        // (le client créateur a déjà mis à jour son état local)
         onCardCreated((card) => {
             setLists((prev) =>
-                prev.map((l) =>
-                    l.id === card.listId ? { ...l, cards: [...l.cards, card] } : l
-                )
+                prev.map((l) => {
+                    if (l.id !== card.listId) return l;
+                    if (l.cards.some((c) => c.id === card.id)) return l;
+                    return { ...l, cards: [...l.cards, card] };
+                })
             );
         });
 
@@ -103,12 +110,35 @@ export default function BoardView() {
                     cards: l.cards.map((c) => (c.id === updated.id ? updated : c)),
                 }))
             );
+            // Met à jour la modal si elle est ouverte sur cette carte
+            setSelectedCard((prev) => (prev?.id === updated.id ? updated : prev));
+        });
+
+        onCardDeleted(({ cardId: deletedId, listId }) => {
+            setLists((prev) =>
+                prev.map((l) =>
+                    l.id === listId
+                        ? { ...l, cards: l.cards.filter((c) => c.id !== deletedId) }
+                        : l
+                )
+            );
+        });
+
+        onListCreated((list) => {
+            setLists((prev) => {
+                if (prev.some((l) => l.id === list.id)) return prev;
+                return [...prev, { ...list, cards: [] }];
+            });
         });
 
         onListUpdated((updatedList) => {
             setLists((prev) =>
                 prev.map((l) => (l.id === updatedList.id ? { ...l, ...updatedList } : l))
             );
+        });
+
+        onListDeleted(({ listId }) => {
+            setLists((prev) => prev.filter((l) => l.id !== listId));
         });
 
         return () => {
