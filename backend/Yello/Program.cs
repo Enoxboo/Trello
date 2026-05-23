@@ -8,13 +8,11 @@ using Yello.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Base de données PostgreSQL via Entity Framework Core
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// JWT : le middleware vérifie la signature et les claims à chaque requête protégée.
-// Pour SignalR (WebSocket), le token arrive via la query string "access_token"
-// car les WebSockets ne supportent pas les headers HTTP classiques.
+// Pour SignalR : le token JWT arrive via query string car les WebSockets
+// ne supportent pas les headers HTTP après le handshake initial.
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -43,7 +41,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// CORS : autorise le frontend React (port 5173) à appeler l'API
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -53,7 +50,6 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
-// Injection de dépendances : les services sont instanciés par ASP.NET Core à la demande
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<BoardService>();
