@@ -34,7 +34,7 @@ export default function CardModal({ card, onClose, onUpdate }) {
 
                     <aside className="modal-sidebar">
                         <CardModalMembers members={card.members} onChange={(v) => update("members", v)} />
-                        <CardModalLabels labels={card.labels} onChange={(v) => update("labels", v)} />
+                        <CardModalLabels cardId={card.id} labels={card.labels} onChange={(v) => update("labels", v)} />
                         <CardModalDueDate dueDate={card.dueDate} onChange={(v) => update("dueDate", v)} />
                     </aside>
                 </div>
