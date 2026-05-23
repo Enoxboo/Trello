@@ -217,23 +217,23 @@ classDiagram
 
 ## 7. Choix architecturaux
 
-**Séparation des responsabilités (Controllers / Services / Entities)**
-Les controllers reçoivent les requêtes HTTP et délèguent immédiatement aux services. Toute la logique métier (vérifications d'accès, calcul des positions, cascade) se trouve dans les services. Cela rend le code plus testable et plus lisible.
+**Séparation Controllers / Services**
+La logique métier est dans les services, pas dans les controllers. Les controllers reçoivent la requête, appellent le service, retournent la réponse. On a suivi le pattern vu en cours pour séparer les responsabilités.
 
-**DTOs (Data Transfer Objects)**
-Les entités EF Core ne sont jamais exposées directement dans les réponses API. Des DTOs intermédiaires permettent de contrôler exactement ce qui est renvoyé, et d'éviter les références circulaires lors de la sérialisation JSON.
+**DTOs**
+On n'expose pas directement les entités EF Core dans les réponses JSON — ça provoque des boucles infinies à la sérialisation (Card contient List qui contient Cards...). Les DTOs permettent de choisir exactement ce qu'on renvoie.
 
 **Position persistée en base**
-L'ordre des listes et des cartes est stocké dans un champ `Position` (entier). À chaque déplacement, les positions de tous les éléments concernés sont recalculées et sauvegardées. Cela garantit que l'ordre est restauré à la reconnexion.
+Chaque liste et chaque carte a un champ `Position` (entier) qui sauvegarde l'ordre d'affichage. Quand on déplace un élément, on recalcule les positions de tous les voisins. Sans ça l'ordre serait perdu à chaque rechargement.
 
-**Cascade delete configuré**
-La suppression d'un Board entraîne automatiquement la suppression de ses listes, qui entraîne la suppression des cartes, commentaires et labels. Ce comportement est configuré explicitement dans `OnModelCreating` pour chaque relation.
+**Cascade delete**
+Configuré dans `OnModelCreating` : supprimer un board supprime ses listes, qui suppriment leurs cartes, commentaires et labels. On a mis `Restrict` sur les relations vers User pour éviter de supprimer l'utilisateur par accident.
 
-**JWT avec refresh token**
-L'access token a une durée de vie courte (15 min) pour limiter les risques en cas de vol. Le refresh token (7 jours) permet de renouveler l'access token silencieusement sans redemander le mot de passe. Le refresh token est stocké en base pour pouvoir être révoqué.
+**Refresh token**
+L'access token expire en 15 min, ce qui limite le risque s'il est intercepté. Le refresh token (7 jours) permet d'en générer un nouveau sans se reconnecter. Il est stocké en base pour pouvoir être invalidé.
 
-**SignalR : groupes par board**
-Chaque utilisateur connecté à un board rejoint un groupe SignalR `board-{id}`. Les événements (création de carte, déplacement, commentaire) sont broadcastés uniquement aux membres de ce groupe, pas à toute l'application.
+**SignalR par groupe**
+Chaque client qui ouvre un board rejoint le groupe `board-{id}`. Le serveur envoie les événements uniquement à ce groupe, pas à tous les connectés. Les services injectent `IHubContext<BoardHub>` pour broadcaster directement après chaque mutation.
 
 ---
 
@@ -308,7 +308,9 @@ L'API REST de Yello assure la communication entre le frontend React et la base d
 |---|---|---|
 | /hubs/board | WebSocket | Hub temps réel |
 
-Méthodes appelables depuis le client : `JoinBoard(boardId)`, `LeaveBoard(boardId)`, `CardCreated`, `CardMoved`, `CardUpdated`, `CommentAdded`, `ListUpdated`.
+Méthodes appelables depuis le client : `JoinBoard(boardId)`, `LeaveBoard(boardId)`.
+
+Les événements émis par le serveur vers les clients du groupe : `CardCreated`, `CardUpdated`, `CardMoved`, `CardDeleted`, `ListCreated`, `ListUpdated`, `ListDeleted`, `CommentAdded`, `UserJoined`, `UserLeft`.
 
 ## 3. Swagger / OpenAPI
 
@@ -352,10 +354,9 @@ Un JWT est composé de trois parties séparées par des points : `header.payload
 **WebSocket (SignalR) :**
 Les WebSockets ne supportent pas les headers HTTP après le handshake initial. L'access token est donc transmis via la query string (`?access_token=...`). Le middleware JWT est configuré pour lire ce paramètre pour les routes commençant par `/hubs`.
 
-## 4. Points de vigilance
+## 4. Points importants
 
-- La clé secrète JWT est stockée dans `appsettings.Development.json` (jamais dans le code ni dans `appsettings.json` en prod)
-- Les mots de passe sont hachés avec BCrypt qui intègre automatiquement un sel aléatoire
-- L'access token a une durée de vie courte (15 min) pour limiter l'exposition en cas de vol
-- Le refresh token est stocké en base pour permettre sa révocation
-- Chaque utilisateur ne peut accéder qu'aux ressources qui lui appartiennent (vérification OwnerId / BoardMember dans chaque service)
+- Le secret JWT est dans `appsettings.Development.json` pour ne pas le committer par erreur dans Git
+- BCrypt gère le sel automatiquement, on n'a pas eu à s'en occuper manuellement
+- L'access token de 15 min + le refresh token de 7 jours évitent à la fois le risque de vol et l'obligation de se reconnecter souvent
+- Chaque service vérifie que l'utilisateur est bien propriétaire ou membre du board avant d'exécuter quoi que ce soit

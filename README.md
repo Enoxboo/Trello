@@ -78,26 +78,6 @@ Application disponible sur : `http://localhost:5173`
 
 ---
 
-## Variables de configuration
-
-| Fichier | Clé | Description |
-|---|---|---|
-| `appsettings.json` | `ConnectionStrings:DefaultConnection` | Connexion PostgreSQL |
-| `appsettings.json` | `Jwt:Issuer` / `Jwt:Audience` | Identifiants du token JWT |
-| `appsettings.Development.json` | `Jwt:Secret` | Clé secrète de signature JWT (dev uniquement) |
-
----
-
-## Structure du projet
-
-```
-Trello/
-├── frontend/          → React 19 + Vite + Tailwind
-└── backend/Yello/     → ASP.NET Core 10 + EF Core + PostgreSQL
-```
-
----
-
 ## Fonctionnalités
 
 - Inscription / connexion avec JWT (access token 15 min + refresh token 7 jours)
