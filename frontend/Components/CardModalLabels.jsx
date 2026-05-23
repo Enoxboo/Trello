@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { addLabel, removeLabel } from "../Services/cardService";
 
 const PRESET_LABELS = [
     { name: "urgent", color: "#c0392b" },
@@ -8,30 +9,42 @@ const PRESET_LABELS = [
     { name: "test",   color: "#f39c12" },
 ];
 
-// Composant pour gérer les labels d'une carte dans le modal de la carte
-// Il affiche une liste de labels prédéfinis et permet d'en ajouter de nouveaux
-// Les labels sélectionnés sont mis en surbrillance
-export default function CardModalLabels({ labels, onChange }) {
+export default function CardModalLabels({ cardId, labels, onChange }) {
     const [newLabel, setNewLabel] = useState("");
     const [newColor, setNewColor] = useState("#805e73");
 
-    // labels est un tableau d'objets { name, color }
     const isActive = (name) => labels.some((l) => l.name === name);
 
-    const toggle = (name, color) => {
-        if (isActive(name)) {
-            onChange(labels.filter((l) => l.name !== name));
+    const toggle = async (name, color) => {
+        const existing = labels.find((l) => l.name === name);
+        if (existing) {
+            // Le label a un id réel depuis l'API
+            try {
+                await removeLabel(cardId, existing.id);
+                onChange(labels.filter((l) => l.name !== name));
+            } catch (err) {
+                console.error("Erreur suppression label :", err);
+            }
         } else {
-            onChange([...labels, { name, color }]);
+            try {
+                const created = await addLabel(cardId, name, color);
+                onChange([...labels, created]);
+            } catch (err) {
+                console.error("Erreur ajout label :", err);
+            }
         }
     };
 
-    const addCustom = () => {
+    const addCustom = async () => {
         const trimmed = newLabel.trim();
-        if (trimmed && !isActive(trimmed)) {
-            onChange([...labels, { name: trimmed, color: newColor }]);
+        if (!trimmed || isActive(trimmed)) return;
+        try {
+            const created = await addLabel(cardId, trimmed, newColor);
+            onChange([...labels, created]);
             setNewLabel("");
             setNewColor("#805e73");
+        } catch (err) {
+            console.error("Erreur ajout label custom :", err);
         }
     };
 
@@ -54,12 +67,12 @@ export default function CardModalLabels({ labels, onChange }) {
                     </button>
                 ))}
 
-                {/* Labels custom ajoutés dynamiquement */}
+                {/* Labels custom (pas dans les presets) */}
                 {labels
                     .filter((l) => !PRESET_LABELS.some((p) => p.name === l.name))
-                    .map(({ name, color }) => (
+                    .map(({ id, name, color }) => (
                         <button
-                            key={name}
+                            key={id}
                             className="modal-label-btn modal-label-btn--active"
                             style={{ "--label-color": color }}
                             onClick={() => toggle(name, color)}
