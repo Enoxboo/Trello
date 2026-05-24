@@ -47,3 +47,5 @@ yarn-debug.log*
 CLAUDE.md
 doc/cours.md
 doc/sujet.md
+cours_et_sujet.md
+.claude/
