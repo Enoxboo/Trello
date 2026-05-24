@@ -578,26 +578,94 @@
         border-radius: 4px;
     }
 }
+.board-invite-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+    min-width: 220px;
+    z-index: 100;
+    color: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
 
-/* ─── Drag & Drop ─────────────────────────────────── */
+.board-invite-code {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    color: #805e73;
+    font-family: monospace;
+}
+
+.board-action-btn--dark {
+    background: rgba(61, 32, 53, 0.15);
+    border-color: rgba(61, 32, 53, 0.3);
+    color: #3d2035;
+}
+
+.board-action-btn--dark:hover {
+    background: rgba(61, 32, 53, 0.25);
+}
+
+/* Indicateur visuel lors du drag & drop d'une carte sur une liste */
 .list-column--drag-over {
-    background: #e0d4dc;
-    outline: 2px dashed #805e73;
-    outline-offset: -2px;
+    outline: 2px dashed #0052cc;
+    background: rgba(0, 82, 204, 0.05);
 }
 
-.card--dragging {
-    opacity: 0.4;
+.card[draggable="true"] {
+    cursor: grab;
 }
 
-/* ─── États de chargement / erreur ───────────────── */
-.board-loading,
-.board-error {
+.card[draggable="true"]:active {
+    cursor: grabbing;
+    opacity: 0.6;
+}
+
+/* Drop position indicator for intra-list card reordering */
+.card-drop-indicator {
+    height: 3px;
+    background: #0052cc;
+    border-radius: 2px;
+    margin: 2px 0;
+}
+
+/* Presence avatars shown in the board header */
+.presence-avatars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 4px;
+}
+
+.presence-avatar {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.25);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 60vh;
-    font-size: 16px;
-    color: #805e73;
-    font-weight: 600;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    cursor: default;
+}
+
+.presence-dot {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 9px;
+    height: 9px;
+    background: #22c55e;
+    border-radius: 50%;
+    border: 2px solid #805e73;
 }

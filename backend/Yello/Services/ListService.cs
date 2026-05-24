@@ -1,84 +1,128 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Yello.Data;
-using Yello.DTOs;
+using Yello.DTOs.List;
 using Yello.Entities;
 using Yello.Hubs;
 
 namespace Yello.Services;
 
-public class ListService(AppDbContext db, IHubContext<BoardHub> hub)
+public class ListService
 {
-    public async Task<ListDto?> CreateAsync(CreateListDto dto, int userId)
+    private readonly AppDbContext _db;
+    private readonly IHubContext<BoardHub> _hub;
+
+    public ListService(AppDbContext db, IHubContext<BoardHub> hub)
     {
-        var board = await db.Boards.FirstOrDefaultAsync(b => b.Id == dto.BoardId && b.UserId == userId);
-        if (board is null) return null;
-
-        var position = await db.Lists.CountAsync(l => l.BoardId == dto.BoardId);
-        var list = new Entities.List { Title = dto.Title, BoardId = dto.BoardId, Position = position };
-        db.Lists.Add(list);
-        await db.SaveChangesAsync();
-
-        var listDto = new ListDto(list.Id, list.Title, list.Position, []);
-        await hub.Clients.Group($"board-{dto.BoardId}")
-            .SendAsync("ListCreated", new { boardId = dto.BoardId, list = listDto });
-
-        return listDto;
+        _db = db;
+        _hub = hub;
     }
 
-    public async Task<ListDto?> UpdateAsync(int id, UpdateListDto dto, int userId)
+    private static string Group(int boardId) => $"board-{boardId}";
+
+    public async Task<List<ListDto>> GetByBoardAsync(int boardId, int userId)
     {
-        var list = await db.Lists
-            .Include(l => l.Board)
-            .FirstOrDefaultAsync(l => l.Id == id && l.Board.UserId == userId);
-        if (list is null) return null;
+        var hasAccess = await _db.Boards.AnyAsync(b => b.Id == boardId &&
+            (b.OwnerId == userId || b.Members.Any(m => m.UserId == userId)));
 
-        list.Title = dto.Title;
-        await db.SaveChangesAsync();
+        if (!hasAccess) return [];
 
-        await hub.Clients.Group($"board-{list.BoardId}")
-            .SendAsync("ListUpdated", new { boardId = list.BoardId, listId = id, title = dto.Title });
-
-        return new ListDto(list.Id, list.Title, list.Position, []);
-    }
-
-    public async Task<bool> DeleteAsync(int id, int userId)
-    {
-        var list = await db.Lists
-            .Include(l => l.Board)
-            .FirstOrDefaultAsync(l => l.Id == id && l.Board.UserId == userId);
-        if (list is null) return false;
-
-        int boardId = list.BoardId;
-        db.Lists.Remove(list);
-        await db.SaveChangesAsync();
-
-        var remaining = await db.Lists
+        return await _db.Lists
             .Where(l => l.BoardId == boardId)
             .OrderBy(l => l.Position)
+            .Select(l => ToDto(l))
             .ToListAsync();
-        for (int i = 0; i < remaining.Count; i++)
-            remaining[i].Position = i;
-        await db.SaveChangesAsync();
-
-        await hub.Clients.Group($"board-{boardId}")
-            .SendAsync("ListDeleted", new { boardId, listId = id });
-
-        return true;
     }
 
-    public async Task<bool> ReorderAsync(int boardId, List<int> orderedIds, int userId)
+    public async Task<ListDto?> CreateAsync(int boardId, CreateListDto dto, int userId)
     {
-        var board = await db.Boards.FirstOrDefaultAsync(b => b.Id == boardId && b.UserId == userId);
-        if (board is null) return false;
+        var hasAccess = await _db.Boards.AnyAsync(b => b.Id == boardId &&
+            (b.OwnerId == userId || b.Members.Any(m => m.UserId == userId)));
 
-        var lists = await db.Lists.Where(l => l.BoardId == boardId).ToListAsync();
-        for (int i = 0; i < orderedIds.Count; i++)
+        if (!hasAccess) return null;
+
+        var maxPosition = await _db.Lists
+            .Where(l => l.BoardId == boardId)
+            .MaxAsync(l => (int?)l.Position) ?? -1;
+
+        var list = new BoardList
         {
-            var list = lists.FirstOrDefault(l => l.Id == orderedIds[i]);
-            if (list is not null) list.Position = i;
-        }
-        await db.SaveChangesAsync();
+            Title = dto.Title,
+            BoardId = boardId,
+            Position = maxPosition + 1
+        };
+
+        _db.Lists.Add(list);
+        await _db.SaveChangesAsync();
+
+        var result = ToDto(list);
+        await _hub.Clients.Group(Group(boardId)).SendAsync("ListCreated", result);
+        return result;
+    }
+
+    public async Task<ListDto?> UpdateAsync(int listId, UpdateListDto dto, int userId)
+    {
+        var list = await _db.Lists
+            .Include(l => l.Board)
+            .FirstOrDefaultAsync(l => l.Id == listId &&
+                (l.Board.OwnerId == userId || l.Board.Members.Any(m => m.UserId == userId)));
+
+        if (list == null) return null;
+
+        list.Title = dto.Title;
+        await _db.SaveChangesAsync();
+
+        var result = ToDto(list);
+        await _hub.Clients.Group(Group(list.BoardId)).SendAsync("ListUpdated", result);
+        return result;
+    }
+
+    public async Task<bool> MoveAsync(int listId, MoveListDto dto, int userId)
+    {
+        var list = await _db.Lists
+            .Include(l => l.Board)
+            .FirstOrDefaultAsync(l => l.Id == listId &&
+                (l.Board.OwnerId == userId || l.Board.Members.Any(m => m.UserId == userId)));
+
+        if (list == null) return false;
+
+        var siblings = await _db.Lists
+            .Where(l => l.BoardId == list.BoardId && l.Id != listId)
+            .OrderBy(l => l.Position)
+            .ToListAsync();
+
+        siblings.Insert(Math.Clamp(dto.Position, 0, siblings.Count), list);
+
+        for (int i = 0; i < siblings.Count; i++)
+            siblings[i].Position = i;
+
+        await _db.SaveChangesAsync();
         return true;
     }
+
+    public async Task<bool> DeleteAsync(int listId, int userId)
+    {
+        var list = await _db.Lists
+            .Include(l => l.Board)
+            .FirstOrDefaultAsync(l => l.Id == listId &&
+                (l.Board.OwnerId == userId || l.Board.Members.Any(m => m.UserId == userId)));
+
+        if (list == null) return false;
+
+        var boardId = list.BoardId;
+
+        _db.Lists.Remove(list);
+        await _db.SaveChangesAsync();
+
+        await _hub.Clients.Group(Group(boardId)).SendAsync("ListDeleted", new { listId });
+        return true;
+    }
+
+    private static ListDto ToDto(BoardList l) => new()
+    {
+        Id = l.Id,
+        Title = l.Title,
+        Position = l.Position,
+        BoardId = l.BoardId
+    };
 }

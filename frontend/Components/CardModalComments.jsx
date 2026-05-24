@@ -1,12 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getCurrentUser } from "../Services/authService";
+import { getComments, addComment, updateComment, deleteComment } from "../Services/cardService";
+import {
+    onCommentAdded,
+    onCommentUpdated,
+    onCommentDeleted,
+    offCommentAdded,
+    offCommentUpdated,
+    offCommentDeleted,
+} from "../Services/signalRService";
 
-export default function CardModalComments({ comments, onAdd, onUpdate, onDelete }) {
+export default function CardModalComments({ cardId }) {
+    const [comments, setComments] = useState([]);
     const [value, setValue] = useState("");
+    const currentUser = getCurrentUser();
+
+    useEffect(() => {
+        getComments(cardId).then(setComments).catch(() => {});
+    }, [cardId]);
+
+    useEffect(() => {
+        const handleAdded = (comment) => {
+            if (comment.cardId !== cardId) return;
+            setComments((prev) => {
+                if (prev.some((c) => c.id === comment.id)) return prev;
+                return [...prev, comment];
+            });
+        };
+        const handleUpdated = (updated) => {
+            if (updated.cardId !== cardId) return;
+            setComments((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        };
+        const handleDeleted = ({ commentId, cardId: deletedCardId }) => {
+            if (deletedCardId !== cardId) return;
+            setComments((prev) => prev.filter((c) => c.id !== commentId));
+        };
+
+        onCommentAdded(handleAdded);
+        onCommentUpdated(handleUpdated);
+        onCommentDeleted(handleDeleted);
+
+        return () => {
+            offCommentAdded(handleAdded);
+            offCommentUpdated(handleUpdated);
+            offCommentDeleted(handleDeleted);
+        };
+    }, [cardId]);
 
     const handleAdd = async () => {
         if (!value.trim()) return;
-        await onAdd(value.trim());
-        setValue("");
+        try {
+            await addComment(cardId, value.trim());
+            setValue("");
+        } catch (err) {
+            console.error("Erreur ajout commentaire :", err);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        try {
+            await deleteComment(id);
+        } catch (err) {
+            console.error("Erreur suppression commentaire :", err);
+        }
+    };
+
+    const handleEdit = async (id, newContent) => {
+        try {
+            await updateComment(id, newContent);
+        } catch (err) {
+            console.error("Erreur modification commentaire :", err);
+        }
     };
 
     return (
@@ -16,6 +80,9 @@ export default function CardModalComments({ comments, onAdd, onUpdate, onDelete 
             </div>
 
             <div className="modal-comment-input-row">
+                <span className="modal-avatar modal-avatar--current">
+                    {currentUser?.username?.[0]?.toUpperCase() ?? "?"}
+                </span>
                 <div className="modal-comment-input-wrapper">
                     <textarea
                         className="modal-comment-textarea"
@@ -35,8 +102,9 @@ export default function CardModalComments({ comments, onAdd, onUpdate, onDelete 
                     <CommentItem
                         key={c.id}
                         comment={c}
-                        onDelete={() => onDelete(c.id)}
-                        onEdit={(content) => onUpdate(c.id, content)}
+                        isOwner={c.authorId === currentUser?.id}
+                        onDelete={() => handleDelete(c.id)}
+                        onEdit={(content) => handleEdit(c.id, content)}
                     />
                 ))}
             </div>
@@ -44,24 +112,31 @@ export default function CardModalComments({ comments, onAdd, onUpdate, onDelete 
     );
 }
 
-function CommentItem({ comment, onDelete, onEdit }) {
+function CommentItem({ comment, isOwner, onDelete, onEdit }) {
     const [editing, setEditing] = useState(false);
     const [value, setValue] = useState(comment.content);
 
-    const handleSave = async () => {
-        if (!value.trim()) return;
-        await onEdit(value.trim());
-        setEditing(false);
+    useEffect(() => {
+        setValue(comment.content);
+    }, [comment.content]);
+
+    const handleSave = () => {
+        if (value.trim()) {
+            onEdit(value.trim());
+            setEditing(false);
+        }
     };
 
     return (
         <div className="modal-comment">
-            <span className="modal-avatar">{comment.author}</span>
+            <span className="modal-avatar">{comment.authorUsername?.[0]?.toUpperCase() ?? "?"}</span>
             <div className="modal-comment-body">
                 <div className="modal-comment-meta">
-                    <strong>{comment.author}</strong>
+                    <strong>{comment.authorUsername}</strong>
                     <span className="modal-comment-date">
-                        {new Date(comment.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        {new Date(comment.createdAt).toLocaleDateString("fr-FR", {
+                            day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
+                        })}
                     </span>
                 </div>
                 {editing ? (
@@ -75,13 +150,13 @@ function CommentItem({ comment, onDelete, onEdit }) {
                         />
                         <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
                             <button className="modal-save-btn" onClick={handleSave}>Enregistrer</button>
-                            <button className="modal-cancel-btn" onClick={() => { setValue(comment.content); setEditing(false); }}>Annuler</button>
+                            <button className="modal-cancel-btn" onClick={() => setEditing(false)}>Annuler</button>
                         </div>
                     </div>
                 ) : (
                     <p className="modal-comment-text">{comment.content}</p>
                 )}
-                {!editing && (
+                {isOwner && !editing && (
                     <div className="modal-comment-actions">
                         <button className="modal-comment-action-btn" onClick={() => setEditing(true)}>Modifier</button>
                         <span>·</span>

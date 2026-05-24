@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, Fragment } from "react";
 import CardItem from "./CardItem";
 import AddCardButton from "./AddCardButton";
 import { Trash2 } from "lucide-react";
@@ -10,13 +10,15 @@ export default function ListColumn({
     onCardClick,
     onDeleteList,
     onDeleteCard,
-    onMoveCard,
+    onDragStart,
+    onDragOver,
+    onDrop,
 }) {
     const [editing, setEditing] = useState(false);
     const [title, setTitle] = useState(list.title);
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const [dragOver, setDragOver] = useState(false);
-    const dragCounter = useRef(0);
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [dropIndex, setDropIndex] = useState(null);
 
     const handleBlur = () => {
         setEditing(false);
@@ -28,55 +30,45 @@ export default function ListColumn({
         onAddCard(list.id, cardTitle);
     };
 
-    // --- Drag & Drop ---
+    // Per-card handler: determines upper/lower half to compute insert index
+    const handleCardDragOver = (e, cardIndex) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+        const rect = e.currentTarget.getBoundingClientRect();
+        setDropIndex(e.clientY < rect.top + rect.height / 2 ? cardIndex : cardIndex + 1);
+    };
 
+    // Fallback: hovering over list background → append to end
     const handleDragOver = (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
+        setIsDragOver(true);
+        setDropIndex(list.cards.length);
+        onDragOver(e, list.id);
     };
 
-    const handleDragEnter = (e) => {
-        e.preventDefault();
-        dragCounter.current += 1;
-        setDragOver(true);
-    };
-
-    const handleDragLeave = () => {
-        dragCounter.current -= 1;
-        if (dragCounter.current === 0) setDragOver(false);
+    const handleDragLeave = (e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) {
+            setIsDragOver(false);
+            setDropIndex(null);
+        }
     };
 
     const handleDrop = (e) => {
         e.preventDefault();
-        dragCounter.current = 0;
-        setDragOver(false);
-
-        const cardId = parseInt(e.dataTransfer.getData("cardId"), 10);
-        const sourceListId = parseInt(e.dataTransfer.getData("sourceListId"), 10);
-
-        if (!cardId) return;
-
-        // Calcule la position de dépôt en cherchant l'élément card le plus proche
-        const cardElements = [...e.currentTarget.querySelectorAll(".card:not(.card--dragging)")];
-        let targetPosition = list.cards.length;
-
-        for (let i = 0; i < cardElements.length; i++) {
-            const rect = cardElements[i].getBoundingClientRect();
-            if (e.clientY < rect.top + rect.height / 2) {
-                targetPosition = i;
-                break;
-            }
-        }
-
-        onMoveCard(cardId, sourceListId, list.id, targetPosition);
+        const idx = dropIndex;
+        setIsDragOver(false);
+        setDropIndex(null);
+        onDrop(e, list.id, idx);
     };
 
     return (
         <section
-            className={`list-column${dragOver ? " list-column--drag-over" : ""}`}
+            className={`list-column${isDragOver ? " list-column--drag-over" : ""}`}
             aria-label={`Liste : ${list.title}`}
             onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
@@ -121,15 +113,23 @@ export default function ListColumn({
             </div>
 
             <div className="list-cards">
-                {list.cards.map((card) => (
-                    <CardItem
-                        key={card.id}
-                        card={card}
-                        listId={list.id}
-                        onClick={onCardClick}
-                        onDelete={(cardId) => onDeleteCard(list.id, cardId)}
-                    />
+                {list.cards.map((card, index) => (
+                    <Fragment key={card.id}>
+                        {isDragOver && dropIndex === index && (
+                            <div className="card-drop-indicator" />
+                        )}
+                        <CardItem
+                            card={card}
+                            onClick={onCardClick}
+                            onDelete={(cardId) => onDeleteCard(list.id, cardId)}
+                            onDragStart={onDragStart}
+                            onCardDragOver={(e) => handleCardDragOver(e, index)}
+                        />
+                    </Fragment>
                 ))}
+                {isDragOver && dropIndex === list.cards.length && (
+                    <div className="card-drop-indicator" />
+                )}
             </div>
 
             <AddCardButton onAdd={handleAddCard} />

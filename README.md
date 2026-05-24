@@ -1,27 +1,22 @@
-# Yello — Gestionnaire de tâches collaboratif (Trello-like)
+# Yello — Gestionnaire de tâches Kanban
 
-Application web temps réel de gestion de tâches en tableaux/listes/cartes.
-
-## Stack
-
-| Couche | Technologie |
-|---|---|
-| Backend | C# / ASP.NET Core 10 |
-| Base de données | PostgreSQL 18 |
-| ORM | Entity Framework Core 10 + Npgsql |
-| Authentification | JWT (access 30 min) + Refresh token (7 jours) |
-| Temps réel | SignalR (WebSocket) |
-| Frontend | React 18 (Vite) |
-| Documentation API | Swagger / OpenAPI |
+Clone de Trello développé en React + ASP.NET Core. Projet B2 Ynov Toulouse 2024/2025.
 
 ---
 
 ## Prérequis
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Node.js 20+](https://nodejs.org/)
-- [PostgreSQL 18](https://www.postgresql.org/download/) — base `yello_db` sur `localhost:5432`
-- Outil EF Core CLI : `dotnet tool install --global dotnet-ef`
+| Outil | Version minimum |
+|---|---|
+| .NET SDK | 10.0 |
+| Node.js | 20+ |
+| PostgreSQL | 15+ |
+| dotnet-ef | 10.0 |
+
+Installer l'outil de migrations :
+```bash
+dotnet tool install --global dotnet-ef
+```
 
 ---
 
@@ -30,91 +25,62 @@ Application web temps réel de gestion de tâches en tableaux/listes/cartes.
 ### 1. Cloner le dépôt
 
 ```bash
-git clone <url-du-repo>
-cd Yello
+git clone git@github.com:Enoxboo/Trello.git
+cd Trello
 ```
 
-### 2. Configurer la base de données
+### 2. Base de données
 
-Créer la base PostgreSQL :
-
+Créer une base PostgreSQL locale :
 ```sql
 CREATE DATABASE yello_db;
 ```
 
-Vérifier / modifier la chaîne de connexion dans `backend/Yello/appsettings.json` :
-
+Vérifier la connection string dans `backend/Yello/appsettings.json` :
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Host=localhost;Port=5432;Database=yello_db;Username=postgres;Password=<votre_mot_de_passe>"
+  "DefaultConnection": "Host=localhost;Database=yello_db;Username=postgres;Password=postgres"
 }
 ```
 
-### 3. Appliquer les migrations EF Core
+### 3. Migrations EF Core
 
 ```bash
 cd backend/Yello
 dotnet ef database update
 ```
 
-Cela crée les tables : `Users`, `Boards`, `Lists`, `Cards`, `Comments`, `Labels`, `RefreshTokens`.
-
-### 4. Installer les dépendances frontend
-
-```bash
-cd frontend
-npm install
-```
+Cela crée toutes les tables (Users, Boards, Lists, Cards, Labels, Comments, BoardMembers, CardMembers).
 
 ---
 
 ## Lancement
 
-### Backend
+### Backend (terminal 1)
 
 ```bash
 cd backend/Yello
 dotnet run
 ```
 
-Démarre sur `http://localhost:5107`.  
-Documentation API Swagger : `http://localhost:5107/swagger`
+API disponible sur : `http://localhost:5245`  
+Documentation Swagger : `http://localhost:5245/swagger`
 
-### Frontend
+### Frontend (terminal 2)
 
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
 
-Démarre sur `http://localhost:5173` (ou 5174/5175 si le port est pris).
+Application disponible sur : `http://localhost:5173`
 
 ---
 
 ## Fonctionnalités
 
-- **Authentification JWT** : inscription, connexion, refresh token automatique
-- **Tableau Kanban** : listes scrollables, cartes draggables entre colonnes
-- **Drag & Drop HTML5** : déplacement de cartes avec mise à jour optimiste + rollback
-- **Détail de carte** : titre, description, date d'échéance, labels colorés, commentaires
-- **Temps réel SignalR** : synchronisation instantanée entre onglets/utilisateurs
-
----
-
-## Architecture
-
-```
-backend/Yello/        — ASP.NET Core API (Controllers, Services, Entities, DTOs)
-frontend/             — React SPA (Views, Components, Services, hooks)
-```
-
-Voir `CLAUDE.md` pour l'architecture détaillée.
-
----
-
-## Tester le temps réel
-
-1. Démarrer backend + frontend
-2. Ouvrir deux onglets sur `http://localhost:5173`
-3. Se connecter avec le même compte dans les deux onglets
-4. Ajouter/déplacer/supprimer une carte dans un onglet → l'autre se met à jour instantanément
+- Inscription / connexion avec JWT (access token 15 min + refresh token 7 jours)
+- Gestion de boards, listes, cartes avec persistence des positions (drag & drop)
+- Labels colorés, membres assignés, date d'échéance, commentaires sur les cartes
+- Synchronisation temps réel entre navigateurs via SignalR (WebSocket)
