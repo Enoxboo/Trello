@@ -1,335 +1,374 @@
 import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import BoardHeader from "../Components/BoardHeader";
 import ListColumn from "../Components/ListColumn";
 import CardModal from "../Components/CardModal";
 import AddListButton from "../Components/AddListButton";
-import { boardService, listService, cardService, commentService, labelService } from "../Services/boardService";
-import { useBoardHub } from "../hooks/useBoardHub";
+import {
+    getBoardById,
+    updateBoard,
+    deleteBoard,
+    getListsByBoard,
+    createList,
+    updateList,
+    deleteList,
+    generateInviteCode,
+    leaveBoard as leaveBoardHttp,
+} from "../Services/boardService";
+import { getCurrentUser } from "../Services/authService";
+import {
+    getCardsByList,
+    createCard,
+    updateCard,
+    deleteCard,
+    moveCard,
+} from "../Services/cardService";
+import {
+    joinBoard,
+    leaveBoard,
+    onCardCreated,
+    onCardMoved,
+    onCardUpdated,
+    onCardDeleted,
+    onListCreated,
+    onListUpdated,
+    onListDeleted,
+    onCommentAdded,
+    onCommentDeleted,
+    onMemberJoined,
+    onMemberLeft,
+    onUserJoined,
+    onUserLeft,
+    disconnectFromHub,
+} from "../Services/signalRService";
 import "../style/board.css";
 
-function adaptCard(apiCard) {
-    return {
-        id: apiCard.id,
-        title: apiCard.title,
-        description: apiCard.description || "",
-        dueDate: apiCard.dueDate || null,
-        position: apiCard.position,
-        labels: (apiCard.labels || []).map((l) => ({ id: l.id, name: l.name, color: l.color })),
-        comments: (apiCard.comments || []).map((c) => ({
-            id: c.id,
-            author: c.authorUsername,
-            content: c.content,
-            date: c.createdAt,
-        })),
-        members: [],
-    };
-}
-
-function adaptBoard(apiBoard) {
-    return {
-        id: apiBoard.id,
-        title: apiBoard.title,
-        lists: (apiBoard.lists || [])
-            .sort((a, b) => a.position - b.position)
-            .map((l) => ({
-                id: l.id,
-                title: l.title,
-                position: l.position,
-                cards: (l.cards || [])
-                    .sort((a, b) => a.position - b.position)
-                    .map(adaptCard),
-            })),
-    };
-}
-
 export default function BoardView() {
+    const { id } = useParams();
+    const navigate = useNavigate();
     const [board, setBoard] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [lists, setLists] = useState([]);
     const [selectedCard, setSelectedCard] = useState(null);
-    const initialized = useRef(false);
+    const [loading, setLoading] = useState(true);
+    const [activeUsers, setActiveUsers] = useState([]);
+    const dragRef = useRef({ cardId: null, sourceListId: null });
 
+    // Charge le board et toutes ses listes avec leurs cartes au montage du composant
     useEffect(() => {
-        if (initialized.current) return;
-        initialized.current = true;
-
-        async function loadBoard() {
+        async function load() {
             try {
-                const boards = await boardService.getAll();
-                if (boards.length === 0) {
-                    const newBoard = await boardService.create("Mon Board");
-                    setBoard(adaptBoard(newBoard));
-                } else {
-                    setBoard(adaptBoard(boards[0]));
-                }
-            } catch (err) {
-                setError(err.message);
+                const [boardData, listsData] = await Promise.all([
+                    getBoardById(id),
+                    getListsByBoard(id),
+                ]);
+                setBoard(boardData);
+
+                // Charge les cartes de chaque liste en parallèle
+                const listsWithCards = await Promise.all(
+                    listsData.map(async (list) => ({
+                        ...list,
+                        cards: (await getCardsByList(list.id)).map((c) => ({
+                            ...c,
+                            dueDate: c.dueDate?.substring(0, 10) ?? null,
+                        })),
+                    }))
+                );
+                setLists(listsWithCards);
+            } catch {
+                navigate("/boards");
             } finally {
                 setLoading(false);
             }
         }
+        load();
+    }, [id, navigate]);
 
-        loadBoard();
-    }, []);
+    // Connexion au hub SignalR quand le board est chargé.
+    // useEffect retourne une fonction de nettoyage : on quitte le groupe et on coupe la connexion
+    // quand l'utilisateur quitte la page.
+    useEffect(() => {
+        if (!board) return;
+        const boardId = parseInt(id, 10);
 
-    // ── SignalR handlers ─────────────────────────────────────────────────────
-    useBoardHub(board?.id, {
-        onCardCreated: ({ listId, card }) => {
-            setBoard((b) => {
-                const list = b.lists.find((l) => l.id === listId);
-                if (!list || list.cards.find((c) => c.id === card.id)) return b;
-                return {
-                    ...b,
-                    lists: b.lists.map((l) =>
-                        l.id === listId ? { ...l, cards: [...l.cards, adaptCard(card)] } : l
-                    ),
-                };
+        const me = getCurrentUser();
+        joinBoard(boardId)
+            .then(() => setActiveUsers(me ? [me.username] : []))
+            .catch(() => {});
+
+        // Déduplication : on vérifie si la carte/liste existe déjà avant d'ajouter
+        // (le client créateur a déjà mis à jour son état local)
+        onCardCreated((card) => {
+            setLists((prev) =>
+                prev.map((l) => {
+                    if (l.id !== card.listId) return l;
+                    if (l.cards.some((c) => c.id === card.id)) return l;
+                    return { ...l, cards: [...l.cards, card] };
+                })
+            );
+        });
+
+        onCardMoved((move) => {
+            setLists((prev) => {
+                const card = prev.flatMap((l) => l.cards).find((c) => c.id === move.cardId);
+                if (!card) return prev;
+                return prev.map((l) => {
+                    const withoutCard = l.cards.filter((c) => c.id !== move.cardId);
+                    if (l.id !== move.listId) return { ...l, cards: withoutCard };
+                    const arr = [...withoutCard];
+                    arr.splice(Math.min(move.position, arr.length), 0, { ...card, listId: move.listId });
+                    return { ...l, cards: arr };
+                });
             });
-        },
-        onCardUpdated: ({ card }) => {
-            setBoard((b) => ({
-                ...b,
-                lists: b.lists.map((l) => ({
+        });
+
+        onCardUpdated((updated) => {
+            const normalized = { ...updated, dueDate: updated.dueDate?.substring(0, 10) ?? null };
+            setLists((prev) =>
+                prev.map((l) => ({
                     ...l,
-                    cards: l.cards.map((c) => (c.id === card.id ? adaptCard(card) : c)),
-                })),
-            }));
-        },
-        onCardMoved: ({ cardId, fromListId, toListId, toPosition }) => {
-            setBoard((b) => {
-                const sourceList = b.lists.find((l) => l.id === fromListId);
-                const card = sourceList?.cards.find((c) => c.id === cardId);
-                if (!card) return b;
+                    cards: l.cards.map((c) => (c.id === normalized.id ? normalized : c)),
+                }))
+            );
+            setSelectedCard((prev) => (prev?.id === normalized.id ? normalized : prev));
+        });
 
-                return {
-                    ...b,
-                    lists: b.lists.map((l) => {
-                        if (l.id === fromListId && l.id !== toListId)
-                            return { ...l, cards: l.cards.filter((c) => c.id !== cardId) };
-                        if (l.id === toListId) {
-                            const filtered = l.cards.filter((c) => c.id !== cardId);
-                            filtered.splice(toPosition, 0, { ...card, position: toPosition });
-                            return { ...l, cards: filtered };
-                        }
-                        return l;
-                    }),
-                };
-            });
-        },
-        onCardDeleted: ({ cardId, listId }) => {
-            setBoard((b) => ({
-                ...b,
-                lists: b.lists.map((l) =>
-                    l.id === listId ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) } : l
-                ),
-            }));
-        },
-        onListCreated: ({ list }) => {
-            setBoard((b) => {
-                if (b.lists.find((l) => l.id === list.id)) return b;
-                return {
-                    ...b,
-                    lists: [...b.lists, { id: list.id, title: list.title, position: list.position, cards: [] }],
-                };
-            });
-        },
-        onListUpdated: ({ listId, title }) => {
-            setBoard((b) => ({
-                ...b,
-                lists: b.lists.map((l) => (l.id === listId ? { ...l, title } : l)),
-            }));
-        },
-        onListDeleted: ({ listId }) => {
-            setBoard((b) => ({ ...b, lists: b.lists.filter((l) => l.id !== listId) }));
-        },
-    });
+        onCardDeleted(({ cardId: deletedId, listId }) => {
+            setLists((prev) =>
+                prev.map((l) =>
+                    l.id === listId
+                        ? { ...l, cards: l.cards.filter((c) => c.id !== deletedId) }
+                        : l
+                )
+            );
+        });
 
-    // ── Handlers CRUD (optimiste + API) ─────────────────────────────────────
+        onListCreated((list) => {
+            setLists((prev) => {
+                if (prev.some((l) => l.id === list.id)) return prev;
+                return [...prev, { ...list, cards: [] }];
+            });
+        });
+
+        onListUpdated((updatedList) => {
+            setLists((prev) =>
+                prev.map((l) => (l.id === updatedList.id ? { ...l, ...updatedList } : l))
+            );
+        });
+
+        onListDeleted(({ listId }) => {
+            setLists((prev) => prev.filter((l) => l.id !== listId));
+        });
+
+        onCommentAdded((comment) => {
+            setLists((prev) =>
+                prev.map((l) => ({
+                    ...l,
+                    cards: l.cards.map((c) =>
+                        c.id === comment.cardId
+                            ? { ...c, commentCount: (c.commentCount ?? 0) + 1 }
+                            : c
+                    ),
+                }))
+            );
+        });
+
+        onCommentDeleted(({ cardId }) => {
+            setLists((prev) =>
+                prev.map((l) => ({
+                    ...l,
+                    cards: l.cards.map((c) =>
+                        c.id === cardId
+                            ? { ...c, commentCount: Math.max(0, (c.commentCount ?? 0) - 1) }
+                            : c
+                    ),
+                }))
+            );
+        });
+
+        onUserJoined(({ username }) => {
+            setActiveUsers((prev) => prev.includes(username) ? prev : [...prev, username]);
+        });
+
+        onUserLeft(({ username }) => {
+            setActiveUsers((prev) => prev.filter((u) => u !== username));
+        });
+
+        onMemberJoined((member) => {
+            setBoard((prev) => {
+                if (!prev) return prev;
+                if (prev.members?.some((m) => m.userId === member.userId)) return prev;
+                return { ...prev, members: [...(prev.members ?? []), member] };
+            });
+        });
+
+        onMemberLeft(({ userId: leftUserId }) => {
+            setBoard((prev) => {
+                if (!prev) return prev;
+                return { ...prev, members: (prev.members ?? []).filter((m) => m.userId !== leftUserId) };
+            });
+        });
+
+        return () => {
+            leaveBoard(boardId).catch(() => {});
+            disconnectFromHub();
+        };
+    }, [board?.id, id]);
+
+    const currentUser = getCurrentUser();
+
+    const boardMembers = board
+        ? [
+            { userId: board.ownerId, username: board.ownerUsername ?? "Owner" },
+            ...(board.members ?? []),
+          ]
+        : [];
+
     const handleRenameBoard = async (newTitle) => {
-        const prev = board;
-        setBoard((b) => ({ ...b, title: newTitle }));
-        try {
-            await boardService.update(board.id, newTitle);
-        } catch {
-            setBoard(prev);
-        }
+        await updateBoard(id, newTitle);
+        setBoard((prev) => ({ ...prev, title: newTitle }));
+    };
+
+    const handleGenerateCode = async () => {
+        const { code } = await generateInviteCode(id);
+        setBoard((prev) => ({ ...prev, inviteCode: code }));
+    };
+
+    const handleLeaveBoard = async () => {
+        await leaveBoardHttp(id);
+        navigate("/boards");
+    };
+
+    const handleDeleteBoard = async () => {
+        await deleteBoard(id);
+        navigate("/boards");
     };
 
     const handleRenameList = async (listId, newTitle) => {
-        const prev = board;
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => (l.id === listId ? { ...l, title: newTitle } : l)),
-        }));
-        try {
-            await listService.update(listId, newTitle);
-        } catch {
-            setBoard(prev);
-        }
+        await updateList(listId, newTitle);
+        setLists((prev) =>
+            prev.map((l) => (l.id === listId ? { ...l, title: newTitle } : l))
+        );
     };
 
     const handleAddCard = async (listId, cardTitle) => {
-        try {
-            await cardService.create(cardTitle, listId);
-            // L'état est mis à jour via l'événement SignalR CardCreated
-        } catch (err) {
-            setError(err.message);
-        }
+        await createCard(listId, cardTitle);
+        // L'état est mis à jour via l'event SignalR CardCreated (même pour le créateur)
     };
 
     const handleCardUpdate = async (updatedCard) => {
-        const prev = board;
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => ({
+        // Mise à jour optimiste locale
+        setLists((prev) =>
+            prev.map((l) => ({
                 ...l,
                 cards: l.cards.map((c) => (c.id === updatedCard.id ? updatedCard : c)),
-            })),
-        }));
+            }))
+        );
         setSelectedCard(updatedCard);
+
+        // Persiste les champs éditables en base
+        // dueDate est converti en ISO UTC pour que Npgsql (timestamptz) l'accepte
         try {
-            await cardService.update(updatedCard.id, {
+            await updateCard(updatedCard.id, {
                 title: updatedCard.title,
                 description: updatedCard.description,
-                dueDate: updatedCard.dueDate,
+                dueDate: updatedCard.dueDate
+                    ? new Date(updatedCard.dueDate).toISOString()
+                    : null,
             });
-        } catch {
-            setBoard(prev);
+        } catch (err) {
+            console.error("Erreur sauvegarde carte :", err);
         }
     };
 
     const handleAddList = async (title) => {
-        try {
-            await listService.create(title, board.id);
-            // L'état est mis à jour via l'événement SignalR ListCreated
-        } catch (err) {
-            setError(err.message);
-        }
+        await createList(id, title);
+        // L'état est mis à jour via l'event SignalR ListCreated (même pour le créateur)
     };
 
     const handleDeleteList = async (listId) => {
-        const prev = board;
-        setBoard((b) => ({ ...b, lists: b.lists.filter((l) => l.id !== listId) }));
+        await deleteList(listId);
+        setLists((prev) => prev.filter((l) => l.id !== listId));
+    };
+
+    const handleDragStart = (e, cardId) => {
+        const sourceListId = lists.find((l) => l.cards.some((c) => c.id === cardId))?.id;
+        dragRef.cardId = cardId;
+        dragRef.sourceListId = sourceListId;
+        e.dataTransfer.setData("cardId", cardId);
+    };
+
+    // Mise à jour optimiste : on déplace la carte dans l'état local immédiatement,
+    // puis on persiste en base. En cas d'erreur, on restaure l'état précédent.
+    const handleDrop = async (e, targetListId, dropIndex) => {
+        const cardId = parseInt(e.dataTransfer.getData("cardId"), 10);
+        if (!cardId) return;
+
+        const snapshot = lists;
+
+        // Compute insertion position for the backend (siblings array excludes the moved card)
+        const sourceList = lists.find((l) => l.cards.some((c) => c.id === cardId));
+        const sourceCardIndex = sourceList?.cards.findIndex((c) => c.id === cardId) ?? -1;
+        const isSameList = sourceList?.id === targetListId;
+        const targetWithoutMoved = (lists.find((l) => l.id === targetListId)?.cards ?? []).filter((c) => c.id !== cardId);
+        const rawPos = dropIndex ?? targetWithoutMoved.length;
+        const apiPosition = isSameList && dropIndex != null && dropIndex > sourceCardIndex
+            ? rawPos - 1
+            : rawPos;
+
+        setLists((prev) => {
+            const card = prev.flatMap((l) => l.cards).find((c) => c.id === cardId);
+            if (!card) return prev;
+
+            const withoutCard = prev.map((l) => ({
+                ...l,
+                cards: l.cards.filter((c) => c.id !== cardId),
+            }));
+
+            return withoutCard.map((l) => {
+                if (l.id !== targetListId) return l;
+                const arr = [...l.cards];
+                arr.splice(Math.min(apiPosition, arr.length), 0, { ...card, listId: targetListId });
+                return { ...l, cards: arr };
+            });
+        });
+
         try {
-            await listService.delete(listId);
+            await moveCard(cardId, targetListId, apiPosition);
         } catch {
-            setBoard(prev);
+            setLists(snapshot);
         }
     };
 
     const handleDeleteCard = async (listId, cardId) => {
-        const prev = board;
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) =>
-                l.id === listId ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) } : l
-            ),
-        }));
-        try {
-            await cardService.delete(cardId);
-        } catch {
-            setBoard(prev);
-        }
+        await deleteCard(cardId);
+        setLists((prev) =>
+            prev.map((l) =>
+                l.id === listId
+                    ? { ...l, cards: l.cards.filter((c) => c.id !== cardId) }
+                    : l
+            )
+        );
     };
 
-    const handleAddComment = async (cardId, content) => {
-        const comment = await commentService.create(cardId, content);
-        const adapted = { id: comment.id, author: comment.authorUsername, content: comment.content, date: comment.createdAt };
-        setSelectedCard((c) => c ? { ...c, comments: [...c.comments, adapted] } : c);
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => ({
-                ...l,
-                cards: l.cards.map((c) => c.id === cardId ? { ...c, comments: [...c.comments, adapted] } : c),
-            })),
-        }));
-    };
-
-    const handleUpdateComment = async (cardId, commentId, content) => {
-        await commentService.update(cardId, commentId, content);
-        setSelectedCard((c) => c ? { ...c, comments: c.comments.map((cm) => cm.id === commentId ? { ...cm, content } : cm) } : c);
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => ({
-                ...l,
-                cards: l.cards.map((c) => c.id === cardId ? { ...c, comments: c.comments.map((cm) => cm.id === commentId ? { ...cm, content } : cm) } : c),
-            })),
-        }));
-    };
-
-    const handleDeleteComment = async (cardId, commentId) => {
-        await commentService.delete(cardId, commentId);
-        setSelectedCard((c) => c ? { ...c, comments: c.comments.filter((cm) => cm.id !== commentId) } : c);
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => ({
-                ...l,
-                cards: l.cards.map((c) => c.id === cardId ? { ...c, comments: c.comments.filter((cm) => cm.id !== commentId) } : c),
-            })),
-        }));
-    };
-
-    const handleAddLabel = async (cardId, name, color) => {
-        const label = await labelService.create(cardId, name, color);
-        setSelectedCard((c) => c ? { ...c, labels: [...c.labels, { id: label.id, name: label.name, color: label.color }] } : c);
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => ({
-                ...l,
-                cards: l.cards.map((c) => c.id === cardId ? { ...c, labels: [...c.labels, { id: label.id, name: label.name, color: label.color }] } : c),
-            })),
-        }));
-    };
-
-    const handleDeleteLabel = async (cardId, labelId) => {
-        await labelService.delete(cardId, labelId);
-        setSelectedCard((c) => c ? { ...c, labels: c.labels.filter((l) => l.id !== labelId) } : c);
-        setBoard((b) => ({
-            ...b,
-            lists: b.lists.map((l) => ({
-                ...l,
-                cards: l.cards.map((c) => c.id === cardId ? { ...c, labels: c.labels.filter((l) => l.id !== labelId) } : c),
-            })),
-        }));
-    };
-
-    const handleMoveCard = async (cardId, sourceListId, targetListId, targetPosition) => {
-        const prev = board;
-        setBoard((b) => {
-            const sourceList = b.lists.find((l) => l.id === sourceListId);
-            const card = sourceList?.cards.find((c) => c.id === cardId);
-            if (!card) return b;
-
-            const newLists = b.lists.map((l) => {
-                if (l.id === sourceListId && l.id !== targetListId)
-                    return { ...l, cards: l.cards.filter((c) => c.id !== cardId) };
-                if (l.id === targetListId) {
-                    const filtered = l.cards.filter((c) => c.id !== cardId);
-                    filtered.splice(targetPosition, 0, { ...card, position: targetPosition });
-                    return { ...l, cards: filtered };
-                }
-                return l;
-            });
-            return { ...b, lists: newLists };
-        });
-
-        try {
-            await cardService.move(cardId, targetListId, targetPosition);
-        } catch {
-            setBoard(prev);
-        }
-    };
-
-    if (loading) return <div className="board-loading">Chargement...</div>;
-    if (error) return <div className="board-error">{error}</div>;
+    if (loading) return <p style={{ padding: "2rem" }}>Chargement…</p>;
     if (!board) return null;
 
     return (
         <main className="board-page" aria-label="Vue du tableau">
-            <BoardHeader title={board.title} onRename={handleRenameBoard} />
+            <BoardHeader
+                title={board.title}
+                onRename={handleRenameBoard}
+                inviteCode={board.inviteCode}
+                isOwner={board.ownerId === currentUser?.id}
+                onGenerateCode={handleGenerateCode}
+                boardMembers={boardMembers}
+                onLeaveBoard={handleLeaveBoard}
+                onDeleteBoard={handleDeleteBoard}
+                activeUsers={activeUsers}
+            />
 
             <div className="board-lists">
-                {board.lists.map((list) => (
+                {lists.map((list) => (
                     <ListColumn
                         key={list.id}
                         list={list}
@@ -338,7 +377,9 @@ export default function BoardView() {
                         onCardClick={setSelectedCard}
                         onDeleteList={handleDeleteList}
                         onDeleteCard={handleDeleteCard}
-                        onMoveCard={handleMoveCard}
+                        onDragStart={handleDragStart}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
                     />
                 ))}
                 <AddListButton onAdd={handleAddList} />
@@ -349,11 +390,7 @@ export default function BoardView() {
                     card={selectedCard}
                     onClose={() => setSelectedCard(null)}
                     onUpdate={handleCardUpdate}
-                    onAddComment={(content) => handleAddComment(selectedCard.id, content)}
-                    onUpdateComment={(commentId, content) => handleUpdateComment(selectedCard.id, commentId, content)}
-                    onDeleteComment={(commentId) => handleDeleteComment(selectedCard.id, commentId)}
-                    onAddLabel={(name, color) => handleAddLabel(selectedCard.id, name, color)}
-                    onDeleteLabel={(labelId) => handleDeleteLabel(selectedCard.id, labelId)}
+                    boardMembers={boardMembers}
                 />
             )}
         </main>

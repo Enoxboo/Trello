@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import RegisterForm from "../Components/RegisterForm";
 import { RegisterModel } from "../Models/AuthModel";
-import { registerService, saveTokens } from "../Services/authService";
+import { registerService } from "../Services/authService";
 import "../style/login.css";
 import yomoLogo from "../src/assets/yomologo.png";
 
@@ -21,9 +21,8 @@ export default function RegisterView() {
         setError("");
         setLoading(true);
         try {
-            const result = await registerService(form);
-            saveTokens(result.accessToken, result.refreshToken);
-            navigate("/board");
+            await registerService(form);
+            navigate("/boards");
         } catch (err) {
             setError(err.message);
         } finally {
@@ -33,10 +32,9 @@ export default function RegisterView() {
 
     return (
         <main className="login-page" aria-label="Page d'inscription">
-        <div className="login-page">
             <div className="login-wrapper">
                 <div className="login-left">
-                    <img src={yomoLogo} alt="Logo Yomo" className="login-logo" />
+                    <img src={yomoLogo} alt="Logo Yello" className="login-logo" />
                 </div>
                 <div className="login-right">
                     <div className="login-card">
@@ -51,10 +49,13 @@ export default function RegisterView() {
                             loading={loading}
                             error={error}
                         />
+                        <p className="switch-text">
+                            Déjà un compte ?{" "}
+                            <Link to="/login" className="switch-link">Se connecter</Link>
+                        </p>
                     </div>
                 </div>
             </div>
-        </div>
         </main>
     );
 }

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import LoginForm from "../components/LoginForm";
-import { LoginModel } from "../models/AuthModel";
-import { loginService, saveTokens } from "../services/authService";
+import LoginForm from "../Components/LoginForm";
+import { LoginModel } from "../Models/AuthModel";
+import { loginService } from "../Services/authService";
 import "../style/login.css";
 import yomoLogo from "../src/assets/yomologo.png";
 
@@ -21,9 +21,8 @@ export default function LoginView() {
         setError("");
         setLoading(true);
         try {
-            const result = await loginService(form);
-            saveTokens(result.accessToken, result.refreshToken);
-            navigate("/board");
+            await loginService(form);
+            navigate("/boards");
         } catch (err) {
             setError(err.message);
         } finally {
@@ -33,10 +32,9 @@ export default function LoginView() {
 
     return (
         <main className="login-page" aria-label="Page de connexion">
-        <div className="login-page">
             <div className="login-wrapper">
                 <div className="login-left">
-                    <img src={yomoLogo} alt="Logo Yomo" className="login-logo" />
+                    <img src={yomoLogo} alt="Logo Yello" className="login-logo" />
                 </div>
                 <div className="login-right">
                     <div className="login-card">
@@ -53,14 +51,11 @@ export default function LoginView() {
                         />
                         <p className="switch-text">
                             Pas encore de compte ?{" "}
-                            <Link to="/register" className="switch-link">
-                                S'inscrire
-                            </Link>
+                            <Link to="/register" className="switch-link">S'inscrire</Link>
                         </p>
                     </div>
                 </div>
             </div>
-        </div>
         </main>
     );
 }

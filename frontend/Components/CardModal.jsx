@@ -10,7 +10,7 @@ import "../style/card-modal.css";
 // Composant de modal pour afficher et éditer les détails d'une carte
 // Il gère les champs principaux : titre, description, membres, labels, date d'échéance et commentaires
 // La modal se ferme en cliquant en dehors ou en appuyant sur Échap
-export default function CardModal({ card, onClose, onUpdate, onAddComment, onUpdateComment, onDeleteComment, onAddLabel, onDeleteLabel }) {
+export default function CardModal({ card, onClose, onUpdate, boardMembers }) {
     const update = (field, value) => onUpdate({ ...card, [field]: value });
 
     useEffect(() => {
@@ -29,21 +29,12 @@ export default function CardModal({ card, onClose, onUpdate, onAddComment, onUpd
                 <div className="modal-body">
                     <div className="modal-main">
                         <CardModalDescription description={card.description} onChange={(v) => update("description", v)} />
-                        <CardModalComments
-                            comments={card.comments}
-                            onAdd={onAddComment}
-                            onUpdate={onUpdateComment}
-                            onDelete={onDeleteComment}
-                        />
+                        <CardModalComments cardId={card.id} />
                     </div>
 
                     <aside className="modal-sidebar">
-                        <CardModalMembers members={card.members} onChange={(v) => update("members", v)} />
-                        <CardModalLabels
-                            labels={card.labels}
-                            onAdd={onAddLabel}
-                            onDelete={onDeleteLabel}
-                        />
+                        <CardModalMembers cardId={card.id} members={card.members} boardMembers={boardMembers} onChange={(v) => update("members", v)} />
+                        <CardModalLabels cardId={card.id} labels={card.labels} onChange={(v) => update("labels", v)} />
                         <CardModalDueDate dueDate={card.dueDate} onChange={(v) => update("dueDate", v)} />
                     </aside>
                 </div>

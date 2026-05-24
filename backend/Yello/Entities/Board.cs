@@ -6,8 +6,12 @@ public class Board
     public string Title { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public int UserId { get; set; }
-    public User User { get; set; } = null!;
+    // Clé étrangère vers l'utilisateur propriétaire du tableau
+    public int OwnerId { get; set; }
+    public User Owner { get; set; } = null!;
 
-    public ICollection<List> Lists { get; set; } = [];
+    public string? InviteCode { get; set; }
+
+    public ICollection<BoardList> Lists { get; set; } = [];
+    public ICollection<BoardMember> Members { get; set; } = [];
 }

@@ -1,35 +1,30 @@
 import { getDueDateStatus, formatDate } from "../src/utils/dateUtils";
 import { Trash2 } from "lucide-react";
 
-export default function CardItem({ card, listId, onClick, onDelete }) {
+export default function CardItem({ card, onClick, onDelete, onDragStart, onCardDragOver }) {
     const dueDateStatus = getDueDateStatus(card.dueDate);
+    const commentCount = card.commentCount ?? 0;
+    const members = (card.members ?? []).map((m) =>
+        typeof m === "string" ? m : m.username
+    );
 
     const handleDelete = (e) => {
         e.stopPropagation();
         onDelete(card.id);
     };
 
-    const handleDragStart = (e) => {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("cardId", String(card.id));
-        e.dataTransfer.setData("sourceListId", String(listId));
-        // Léger délai pour que le ghost apparaisse avant l'opacité réduite
-        setTimeout(() => e.target.classList.add("card--dragging"), 0);
-    };
-
-    const handleDragEnd = (e) => {
-        e.target.classList.remove("card--dragging");
-    };
-
     return (
         <article
             className="card"
-            draggable
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
             onClick={() => onClick(card)}
+            draggable
+            onDragStart={(e) => {
+                e.dataTransfer.effectAllowed = "move";
+                onDragStart(e, card.id);
+            }}
+            onDragOver={onCardDragOver}
         >
-            {card.labels.length > 0 && (
+            {card.labels && card.labels.length > 0 && (
                 <div className="card-labels">
                     {card.labels.map((label) => (
                         <span
@@ -61,13 +56,13 @@ export default function CardItem({ card, listId, onClick, onDelete }) {
                         {formatDate(card.dueDate)}
                     </span>
                 )}
-                {card.comments.length > 0 && (
-                    <span className="card-comments">{card.comments.length}</span>
+                {commentCount > 0 && (
+                    <span className="card-comments">{commentCount}</span>
                 )}
-                {card.members.length > 0 && (
+                {members.length > 0 && (
                     <div className="card-members">
-                        {card.members.map((m) => (
-                            <span key={m} className="card-avatar" title={m}>{m}</span>
+                        {members.map((m) => (
+                            <span key={m} className="card-avatar" title={m}>{m[0]}</span>
                         ))}
                     </div>
                 )}

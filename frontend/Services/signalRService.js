@@ -1,0 +1,111 @@
+import * as signalR from "@microsoft/signalr";
+
+// Le hub SignalR maintient une connexion WebSocket persistante avec le backend.
+// Les clients rejoignent un groupe par boardId pour ne recevoir que les événements
+// du board qu'ils consultent — pas tous les events de l'application.
+
+let connection = null;
+
+export async function connectToHub() {
+    if (connection) return connection;
+
+    // Pour les WebSockets, le token ne peut pas être envoyé en header HTTP standard.
+    // SignalR le transmet via la query string ?access_token=... lors du handshake.
+    // accessTokenFactory doit être une fonction, pas une valeur capturée,
+    // sinon le token est figé à la connexion et devient invalide après refresh
+    connection = new signalR.HubConnectionBuilder()
+        .withUrl("http://localhost:5245/hubs/board", {
+            accessTokenFactory: () => sessionStorage.getItem("accessToken"),
+        })
+        .withAutomaticReconnect()
+        .build();
+
+    await connection.start();
+    return connection;
+}
+
+export async function joinBoard(boardId) {
+    const conn = await connectToHub();
+    await conn.invoke("JoinBoard", boardId);
+}
+
+export async function leaveBoard(boardId) {
+    if (!connection) return;
+    await connection.invoke("LeaveBoard", boardId);
+}
+
+export function onCardCreated(callback) {
+    connection?.on("CardCreated", callback);
+}
+
+export function onCardMoved(callback) {
+    connection?.on("CardMoved", callback);
+}
+
+export function onCardUpdated(callback) {
+    connection?.on("CardUpdated", callback);
+}
+
+export function onCommentAdded(callback) {
+    connection?.on("CommentAdded", callback);
+}
+
+export function onCommentUpdated(callback) {
+    connection?.on("CommentUpdated", callback);
+}
+
+export function onCommentDeleted(callback) {
+    connection?.on("CommentDeleted", callback);
+}
+
+export function offCommentAdded(callback) {
+    connection?.off("CommentAdded", callback);
+}
+
+export function offCommentUpdated(callback) {
+    connection?.off("CommentUpdated", callback);
+}
+
+export function offCommentDeleted(callback) {
+    connection?.off("CommentDeleted", callback);
+}
+
+export function onListUpdated(callback) {
+    connection?.on("ListUpdated", callback);
+}
+
+export function onUserJoined(callback) {
+    connection?.on("UserJoined", callback);
+}
+
+export function onMemberJoined(callback) {
+    connection?.on("MemberJoined", callback);
+}
+
+export function onMemberLeft(callback) {
+    connection?.on("MemberLeft", callback);
+}
+
+export function onUserLeft(callback) {
+    connection?.on("UserLeft", callback);
+}
+
+export function onCardDeleted(callback) {
+    connection?.on("CardDeleted", callback);
+}
+
+export function onListCreated(callback) {
+    connection?.on("ListCreated", callback);
+}
+
+export function onListDeleted(callback) {
+    connection?.on("ListDeleted", callback);
+}
+
+export async function disconnectFromHub() {
+    const conn = connection;
+    connection = null; // libère immédiatement la référence avant l'arrêt async
+    if (conn) {
+        await conn.stop();
+    }
+}

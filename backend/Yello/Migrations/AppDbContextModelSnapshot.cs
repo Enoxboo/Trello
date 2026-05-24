@@ -33,18 +33,61 @@ namespace Yello.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("InviteCode")
+                        .HasColumnType("text");
+
+                    b.Property<int>("OwnerId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("UserId")
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
+
+                    b.ToTable("Boards");
+                });
+
+            modelBuilder.Entity("Yello.Entities.BoardList", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BoardId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BoardId");
+
+                    b.ToTable("Lists", (string)null);
+                });
+
+            modelBuilder.Entity("Yello.Entities.BoardMember", b =>
+                {
+                    b.Property<int>("BoardId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("BoardId", "UserId");
+
                     b.HasIndex("UserId");
 
-                    b.ToTable("Boards");
+                    b.ToTable("BoardMembers");
                 });
 
             modelBuilder.Entity("Yello.Entities.Card", b =>
@@ -55,8 +98,10 @@ namespace Yello.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Description")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("DueDate")
@@ -79,6 +124,21 @@ namespace Yello.Migrations
                     b.ToTable("Cards");
                 });
 
+            modelBuilder.Entity("Yello.Entities.CardMember", b =>
+                {
+                    b.Property<int>("CardId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("CardId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CardMembers");
+                });
+
             modelBuilder.Entity("Yello.Entities.Comment", b =>
                 {
                     b.Property<int>("Id")
@@ -86,6 +146,9 @@ namespace Yello.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AuthorId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("CardId")
                         .HasColumnType("integer");
@@ -97,14 +160,14 @@ namespace Yello.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CardId");
+                    b.HasIndex("AuthorId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("CardId");
 
                     b.ToTable("Comments");
                 });
@@ -135,59 +198,6 @@ namespace Yello.Migrations
                     b.ToTable("Labels");
                 });
 
-            modelBuilder.Entity("Yello.Entities.List", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BoardId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BoardId");
-
-                    b.ToTable("Lists");
-                });
-
-            modelBuilder.Entity("Yello.Entities.RefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens");
-                });
-
             modelBuilder.Entity("Yello.Entities.User", b =>
                 {
                     b.Property<int>("Id")
@@ -195,9 +205,6 @@ namespace Yello.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -207,35 +214,65 @@ namespace Yello.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("RefreshToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("RefreshTokenExpiry")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Email")
-                        .IsUnique();
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
                     b.ToTable("Users");
                 });
 
             modelBuilder.Entity("Yello.Entities.Board", b =>
                 {
-                    b.HasOne("Yello.Entities.User", "User")
-                        .WithMany("Boards")
-                        .HasForeignKey("UserId")
+                    b.HasOne("Yello.Entities.User", "Owner")
+                        .WithMany("OwnedBoards")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("Yello.Entities.BoardList", b =>
+                {
+                    b.HasOne("Yello.Entities.Board", "Board")
+                        .WithMany("Lists")
+                        .HasForeignKey("BoardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Board");
+                });
+
+            modelBuilder.Entity("Yello.Entities.BoardMember", b =>
+                {
+                    b.HasOne("Yello.Entities.Board", "Board")
+                        .WithMany("Members")
+                        .HasForeignKey("BoardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Yello.Entities.User", "User")
+                        .WithMany("BoardMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Board");
 
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("Yello.Entities.Card", b =>
                 {
-                    b.HasOne("Yello.Entities.List", "List")
+                    b.HasOne("Yello.Entities.BoardList", "List")
                         .WithMany("Cards")
                         .HasForeignKey("ListId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -244,23 +281,42 @@ namespace Yello.Migrations
                     b.Navigation("List");
                 });
 
+            modelBuilder.Entity("Yello.Entities.CardMember", b =>
+                {
+                    b.HasOne("Yello.Entities.Card", "Card")
+                        .WithMany("Members")
+                        .HasForeignKey("CardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Yello.Entities.User", "User")
+                        .WithMany("CardMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Card");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Yello.Entities.Comment", b =>
                 {
+                    b.HasOne("Yello.Entities.User", "Author")
+                        .WithMany("Comments")
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Yello.Entities.Card", "Card")
                         .WithMany("Comments")
                         .HasForeignKey("CardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Yello.Entities.User", "User")
-                        .WithMany("Comments")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("Author");
 
                     b.Navigation("Card");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Yello.Entities.Label", b =>
@@ -274,31 +330,16 @@ namespace Yello.Migrations
                     b.Navigation("Card");
                 });
 
-            modelBuilder.Entity("Yello.Entities.List", b =>
-                {
-                    b.HasOne("Yello.Entities.Board", "Board")
-                        .WithMany("Lists")
-                        .HasForeignKey("BoardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Board");
-                });
-
-            modelBuilder.Entity("Yello.Entities.RefreshToken", b =>
-                {
-                    b.HasOne("Yello.Entities.User", "User")
-                        .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("Yello.Entities.Board", b =>
                 {
                     b.Navigation("Lists");
+
+                    b.Navigation("Members");
+                });
+
+            modelBuilder.Entity("Yello.Entities.BoardList", b =>
+                {
+                    b.Navigation("Cards");
                 });
 
             modelBuilder.Entity("Yello.Entities.Card", b =>
@@ -306,20 +347,19 @@ namespace Yello.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("Labels");
-                });
 
-            modelBuilder.Entity("Yello.Entities.List", b =>
-                {
-                    b.Navigation("Cards");
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Yello.Entities.User", b =>
                 {
-                    b.Navigation("Boards");
+                    b.Navigation("BoardMemberships");
+
+                    b.Navigation("CardMemberships");
 
                     b.Navigation("Comments");
 
-                    b.Navigation("RefreshTokens");
+                    b.Navigation("OwnedBoards");
                 });
 #pragma warning restore 612, 618
         }

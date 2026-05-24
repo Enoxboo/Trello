@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { addLabel, removeLabel } from "../Services/cardService";
 
 const PRESET_LABELS = [
     { name: "urgent", color: "#c0392b" },
@@ -8,27 +9,42 @@ const PRESET_LABELS = [
     { name: "test",   color: "#f39c12" },
 ];
 
-export default function CardModalLabels({ labels, onAdd, onDelete }) {
+export default function CardModalLabels({ cardId, labels, onChange }) {
     const [newLabel, setNewLabel] = useState("");
     const [newColor, setNewColor] = useState("#805e73");
 
-    const findActive = (name) => labels.find((l) => l.name === name);
+    const isActive = (name) => labels.some((l) => l.name === name);
 
     const toggle = async (name, color) => {
-        const existing = findActive(name);
+        const existing = labels.find((l) => l.name === name);
         if (existing) {
-            await onDelete(existing.id);
+            // Le label a un id réel depuis l'API
+            try {
+                await removeLabel(cardId, existing.id);
+                onChange(labels.filter((l) => l.name !== name));
+            } catch (err) {
+                console.error("Erreur suppression label :", err);
+            }
         } else {
-            await onAdd(name, color);
+            try {
+                const created = await addLabel(cardId, name, color);
+                onChange([...labels, created]);
+            } catch (err) {
+                console.error("Erreur ajout label :", err);
+            }
         }
     };
 
     const addCustom = async () => {
         const trimmed = newLabel.trim();
-        if (trimmed && !findActive(trimmed)) {
-            await onAdd(trimmed, newColor);
+        if (!trimmed || isActive(trimmed)) return;
+        try {
+            const created = await addLabel(cardId, trimmed, newColor);
+            onChange([...labels, created]);
             setNewLabel("");
             setNewColor("#805e73");
+        } catch (err) {
+            console.error("Erreur ajout label custom :", err);
         }
     };
 
@@ -42,15 +58,16 @@ export default function CardModalLabels({ labels, onAdd, onDelete }) {
                 {PRESET_LABELS.map(({ name, color }) => (
                     <button
                         key={name}
-                        className={`modal-label-btn ${findActive(name) ? "modal-label-btn--active" : ""}`}
+                        className={`modal-label-btn ${isActive(name) ? "modal-label-btn--active" : ""}`}
                         style={{ "--label-color": color }}
                         onClick={() => toggle(name, color)}
                     >
                         {name}
-                        {findActive(name) && " ✓"}
+                        {isActive(name) && " ✓"}
                     </button>
                 ))}
 
+                {/* Labels custom (pas dans les presets) */}
                 {labels
                     .filter((l) => !PRESET_LABELS.some((p) => p.name === l.name))
                     .map(({ id, name, color }) => (
@@ -58,7 +75,7 @@ export default function CardModalLabels({ labels, onAdd, onDelete }) {
                             key={id}
                             className="modal-label-btn modal-label-btn--active"
                             style={{ "--label-color": color }}
-                            onClick={() => onDelete(id)}
+                            onClick={() => toggle(name, color)}
                         >
                             {name} ✓
                         </button>

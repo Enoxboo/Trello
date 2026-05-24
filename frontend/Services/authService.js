@@ -1,59 +1,56 @@
-const API = "http://localhost:5107/api";
+import { saveTokens, clearTokens } from "./api.js";
 
-export function getAccessToken() {
-    return localStorage.getItem("accessToken");
-}
-
-export function saveTokens(accessToken, refreshToken) {
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
-}
-
-export function clearTokens() {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-}
-
-export function isAuthenticated() {
-    return !!localStorage.getItem("accessToken");
-}
+const BASE_URL = "http://localhost:5245";
 
 export async function loginService(loginData) {
-    const response = await fetch(`${API}/auth/login`, {
+    const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(loginData),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Identifiants incorrects");
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Erreur de connexion");
+
+    saveTokens(data.accessToken, data.refreshToken);
+    sessionStorage.setItem("user", JSON.stringify({
+        id: data.userId,
+        username: data.username,
+        email: data.email,
+    }));
+
     return data;
 }
 
 export async function registerService(registerData) {
-    const response = await fetch(`${API}/auth/register`, {
+    const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registerData),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || "Erreur lors de l'inscription");
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Erreur lors de l'inscription");
+
+    saveTokens(data.accessToken, data.refreshToken);
+    sessionStorage.setItem("user", JSON.stringify({
+        id: data.userId,
+        username: data.username,
+        email: data.email,
+    }));
+
     return data;
 }
 
-export async function refreshAccessToken() {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (!refreshToken) throw new Error("Pas de refresh token");
+export function logoutService() {
+    clearTokens();
+}
 
-    const response = await fetch(`${API}/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-        clearTokens();
-        throw new Error("Session expirée");
-    }
-    saveTokens(data.accessToken, data.refreshToken);
-    return data.accessToken;
+export function getCurrentUser() {
+    const raw = sessionStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+}
+
+export function isAuthenticated() {
+    return !!sessionStorage.getItem("accessToken");
 }
