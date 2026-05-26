@@ -42,10 +42,3 @@ Thumbs.db
 # Logs
 npm-debug.log*
 yarn-debug.log*
-
-# Fichiers internes non destinés au dépôt
-CLAUDE.md
-doc/cours.md
-doc/sujet.md
-cours_et_sujet.md
-.claude/
