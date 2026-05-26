@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yello", "Yello.csproj", "{205E1208-C4CB-427E-8E56-BD0047A7A16E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yello", "backend\Yello\Yello.csproj", "{205E1208-C4CB-427E-8E56-BD0047A7A16E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
