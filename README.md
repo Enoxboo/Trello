@@ -78,6 +78,16 @@ Application disponible sur : `http://localhost:5173`
 
 ---
 
+## Configuration IDE (Rider)
+
+Le fichier `.idea/` est ignoré par git. Pour que le frontend soit visible dans l'explorateur Rider :
+
+1. Clic droit sur la solution dans le panneau de gauche
+2. **Add → Attach Existing Folder**
+3. Sélectionner le dossier `frontend/`
+
+---
+
 ## Fonctionnalités
 
 - Inscription / connexion avec JWT (access token 15 min + refresh token 7 jours)
