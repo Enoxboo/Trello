@@ -11,7 +11,8 @@ public class LabelService(AppDbContext db)
     {
         var card = await db.Cards
             .Include(c => c.List).ThenInclude(l => l.Board)
-            .FirstOrDefaultAsync(c => c.Id == cardId && c.List.Board.UserId == userId);
+            .FirstOrDefaultAsync(c => c.Id == cardId &&
+                (c.List.Board.OwnerId == userId || c.List.Board.Members.Any(m => m.UserId == userId)));
         if (card is null) return null;
 
         var label = new Label { Name = dto.Name, Color = dto.Color, CardId = cardId };
@@ -25,7 +26,8 @@ public class LabelService(AppDbContext db)
     {
         var label = await db.Labels
             .Include(l => l.Card).ThenInclude(c => c.List).ThenInclude(l => l.Board)
-            .FirstOrDefaultAsync(l => l.Id == id && l.Card.List.Board.UserId == userId);
+            .FirstOrDefaultAsync(l => l.Id == id &&
+                (l.Card.List.Board.OwnerId == userId || l.Card.List.Board.Members.Any(m => m.UserId == userId)));
         if (label is null) return false;
 
         db.Labels.Remove(label);
